@@ -1,8 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { inquiries } from "@/db/schema";
+import { inquiries, companies } from "@/db/schema";
+import { sendEmail } from "@/lib/email";
 
 /** Public "request a call" lead capture — no auth required. */
 export async function submitInquiryAction(formData: FormData) {
@@ -18,18 +20,63 @@ export async function submitInquiryAction(formData: FormData) {
   }
 
   const companyId = val("companyId");
-  const interests = formData
-    .getAll("interestedIn")
-    .map(String)
-    .filter(Boolean);
+  const phone = val("phone");
+  const message = val("message");
+  const interests = formData.getAll("interestedIn").map(String).filter(Boolean);
+  const interestedIn = interests.join(", ") || "not specified";
 
   await db.insert(inquiries).values({
     companyId,
     contactName,
     email,
-    phone: val("phone"),
-    message: val("message"),
+    phone,
+    message,
     interestedIn: interests.join(",") || null,
+  });
+
+  // Look up the company name for the notification (if tied to one).
+  let companyName = "—";
+  if (companyId) {
+    const [c] = await db
+      .select({ name: companies.name })
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .limit(1);
+    if (c) companyName = c.name;
+  }
+
+  // Best-effort emails — never block the user on mail delivery.
+  const notifyTo = process.env.LEAD_NOTIFY_EMAIL;
+  if (notifyTo) {
+    await sendEmail({
+      to: notifyTo,
+      replyTo: email,
+      subject: `New lead: ${contactName}${companyName !== "—" ? ` (${companyName})` : ""}`,
+      html: `
+        <h2>New "request a call" lead</h2>
+        <table cellpadding="6" style="font-family:sans-serif;font-size:14px">
+          <tr><td><strong>Name</strong></td><td>${contactName}</td></tr>
+          <tr><td><strong>Email</strong></td><td>${email}</td></tr>
+          <tr><td><strong>Phone</strong></td><td>${phone ?? "—"}</td></tr>
+          <tr><td><strong>Company</strong></td><td>${companyName}</td></tr>
+          <tr><td><strong>Interested in</strong></td><td>${interestedIn}</td></tr>
+          <tr><td><strong>Message</strong></td><td>${message ?? "—"}</td></tr>
+        </table>
+        <p style="font-family:sans-serif;font-size:13px;color:#666">Reply directly to this email to reach ${contactName}.</p>
+      `,
+    });
+  }
+
+  await sendEmail({
+    to: email,
+    subject: "Thanks — we'll be in touch",
+    html: `
+      <div style="font-family:sans-serif;font-size:15px;color:#0f172a">
+        <p>Hi ${contactName},</p>
+        <p>Thanks for your interest in growing your visibility on <strong>Toronto App Developers</strong>. We've received your request${companyName !== "—" ? ` for <strong>${companyName}</strong>` : ""} and will reach out shortly to set things up and arrange payment.</p>
+        <p>— The Toronto App Developers team</p>
+      </div>
+    `,
   });
 
   redirect("/upgrade?sent=1");
