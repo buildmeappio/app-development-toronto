@@ -14,7 +14,9 @@
     "db:seed": "tsx --env-file=.env.local src/db/seed.ts",
     "curate:ingest": "tsx --env-file=.env.local src/db/ingest.ts",
     "curate:rank": "tsx --env-file=.env.local src/db/rank.ts",
-    "curate:reassess": "tsx --env-file=.env.local src/db/reassess.ts"
+    "curate:reassess": "tsx --env-file=.env.local src/db/reassess.ts",
+    "admin:inquiries": "tsx --env-file=.env.local src/db/list-inquiries.ts",
+    "admin:activate": "tsx --env-file=.env.local src/db/activate-placement.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

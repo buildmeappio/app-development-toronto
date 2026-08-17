@@ -12,11 +12,13 @@ export function CompanyCard({
   company,
   hqLocationName,
   featured = false,
+  verified = false,
 }: {
   rank: number;
   company: Company;
   hqLocationName?: string | null;
   featured?: boolean;
+  verified?: boolean;
 }) {
   const profileHref = `/company/${company.slug}`;
   const claimed = company.claimStatus === "claimed";
@@ -30,7 +32,13 @@ export function CompanyCard({
       }`}
     >
       <div className="flex items-center gap-4">
-        <RankBadge rank={rank} />
+        {featured ? (
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-sm font-bold text-amber-950 ring-1 ring-inset ring-amber-300">
+            ★
+          </div>
+        ) : (
+          <RankBadge rank={rank} />
+        )}
         <CompanyLogo name={company.name} logoUrl={company.logoUrl} size={52} />
       </div>
 
@@ -43,7 +51,7 @@ export function CompanyCard({
             {company.name}
           </Link>
           {featured && <Badge variant="sponsored">★ Sponsored</Badge>}
-          {claimed && <Badge variant="verified">✓ Verified</Badge>}
+          {verified && <Badge variant="verified">✓ Verified</Badge>}
         </div>
 
         <div className="mt-1.5">

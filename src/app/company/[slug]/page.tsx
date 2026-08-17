@@ -7,6 +7,7 @@ import { CompanyLogo } from "@/components/company-logo";
 import { StarRating } from "@/components/star-rating";
 import { Badge } from "@/components/badge";
 import { getCompanyBySlug } from "@/lib/queries/locations";
+import { getActiveBadgeCompanyIds } from "@/lib/queries/placements";
 import { JsonLd } from "@/components/json-ld";
 import { breadcrumbJsonLd, companyJsonLd } from "@/lib/jsonld";
 
@@ -44,6 +45,10 @@ export default async function CompanyPage({
 
   const { company, hqLocationName, hqFullSlug } = row;
   const claimed = company.claimStatus === "claimed";
+  const badgeIds = await getActiveBadgeCompanyIds().catch(
+    () => new Set<string>(),
+  );
+  const verified = badgeIds.has(company.id);
 
   const details = [
     { label: "Founded", value: company.foundedYear?.toString() },
@@ -93,8 +98,9 @@ export default async function CompanyPage({
                 <h1 className="text-3xl font-bold tracking-tight text-slate-900">
                   {company.name}
                 </h1>
+                {verified && <Badge variant="verified">✓ Verified</Badge>}
                 {claimed ? (
-                  <Badge variant="verified">✓ Verified</Badge>
+                  <Badge variant="success">Claimed</Badge>
                 ) : (
                   <Badge variant="neutral">Unclaimed</Badge>
                 )}
@@ -172,6 +178,22 @@ export default async function CompanyPage({
                 </Link>
               </div>
             )}
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 lg:sticky lg:top-24">
+              <h2 className="font-semibold text-slate-900">
+                Stand out in {hqLocationName ?? "the GTA"}
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                Get a featured slot at the top of the rankings and a verified
+                badge. We set it up personally — no online checkout.
+              </p>
+              <Link
+                href={`/upgrade?company=${company.slug}`}
+                className="mt-4 inline-block w-full rounded-lg border border-slate-300 px-4 py-2.5 text-center text-sm font-semibold text-slate-800 transition hover:border-blue-400 hover:text-blue-600"
+              >
+                Promote this company
+              </Link>
+            </div>
           </aside>
         </div>
       </Container>

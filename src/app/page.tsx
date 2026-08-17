@@ -260,9 +260,12 @@ function ForCompanies() {
               >
                 Find your company
               </Link>
-              <span className="text-sm text-blue-200">
-                Free to claim · No credit card
-              </span>
+              <Link
+                href="/pricing"
+                className="rounded-xl border border-white/25 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                See paid features
+              </Link>
             </div>
           </div>
         </div>

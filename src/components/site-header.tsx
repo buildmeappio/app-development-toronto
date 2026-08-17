@@ -16,8 +16,8 @@ export function SiteHeader() {
           <Link href="/#how" className="transition hover:text-slate-900">
             How it works
           </Link>
-          <Link href="/#for-companies" className="transition hover:text-slate-900">
-            For companies
+          <Link href="/pricing" className="transition hover:text-slate-900">
+            Pricing
           </Link>
         </nav>
 

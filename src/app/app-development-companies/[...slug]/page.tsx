@@ -11,6 +11,10 @@ import {
   getLocationsBySlugs,
   getAllLocationFullSlugs,
 } from "@/lib/queries/locations";
+import {
+  getFeaturedForLocation,
+  getActiveBadgeCompanyIds,
+} from "@/lib/queries/placements";
 import { JsonLd } from "@/components/json-ld";
 import { breadcrumbJsonLd, itemListJsonLd } from "@/lib/jsonld";
 
@@ -86,13 +90,19 @@ export default async function LocationPage({
   const location = await getLocationByFullSlug(fullSlug).catch(() => null);
   if (!location) notFound();
 
-  const [ranking, children, crumbs] = await Promise.all([
+  const [ranking, children, crumbs, featured, badgeIds] = await Promise.all([
     getRanking(location.id, period).catch(() => []),
     getChildren(location.id).catch(() => []),
     buildBreadcrumbs(fullSlug),
+    getFeaturedForLocation(location.id).catch(() => []),
+    getActiveBadgeCompanyIds().catch(() => new Set<string>()),
   ]);
 
   const isMonthly = period !== "all-time";
+  const featuredIds = new Set(featured.map((f) => f.company.id));
+  // Featured firms are pinned above; drop them from the organic list to avoid
+  // showing them twice, then renumber the organic ranks for display.
+  const organic = ranking.filter((r) => !featuredIds.has(r.company.id));
 
   return (
     <main className="pb-4">
@@ -163,19 +173,38 @@ export default async function LocationPage({
       {/* Body */}
       <Container className="py-10">
         <div className="grid gap-10 lg:grid-cols-[1fr_300px]">
-          <div>
-            {ranking.length === 0 ? (
+          <div className="space-y-6">
+            {featured.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-600">
+                  Featured
+                </p>
+                {featured.map(({ company, hqLocationName }) => (
+                  <CompanyCard
+                    key={company.id}
+                    rank={0}
+                    company={company}
+                    hqLocationName={hqLocationName}
+                    featured
+                    verified={badgeIds.has(company.id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {organic.length === 0 && featured.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
                 No ranked companies yet for this location.
               </div>
             ) : (
               <ol className="space-y-3">
-                {ranking.map(({ rank, company, hqLocationName }) => (
+                {organic.map(({ company, hqLocationName }, i) => (
                   <li key={company.id}>
                     <CompanyCard
-                      rank={rank}
+                      rank={i + 1}
                       company={company}
                       hqLocationName={hqLocationName}
+                      verified={badgeIds.has(company.id)}
                     />
                   </li>
                 ))}

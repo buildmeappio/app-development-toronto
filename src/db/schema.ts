@@ -329,3 +329,47 @@ export const placementsRelations = relations(placements, ({ one }) => ({
     references: [locations.id],
   }),
 }));
+
+/* ---------------------------------------------------------------------------
+ * Inquiries — "request a call" leads for paid features. Payment happens offline
+ * (e-Transfer); the team activates the corresponding placement manually.
+ * ------------------------------------------------------------------------- */
+
+export const inquiryStatusEnum = pgEnum("inquiry_status", [
+  "new",
+  "contacted",
+  "won",
+  "closed",
+]);
+
+export const inquiries = pgTable(
+  "inquiries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // Nullable: a lead may come in before we know which company (or a browse-y lead).
+    companyId: uuid("company_id").references(() => companies.id, {
+      onDelete: "set null",
+    }),
+    contactName: text("contact_name").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone"),
+    // Comma-separated feature interest, e.g. "featured,badge".
+    interestedIn: text("interested_in"),
+    message: text("message"),
+    status: inquiryStatusEnum("status").notNull().default("new"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("inquiries_status_idx").on(t.status),
+    index("inquiries_company_idx").on(t.companyId),
+  ],
+);
+
+export const inquiriesRelations = relations(inquiries, ({ one }) => ({
+  company: one(companies, {
+    fields: [inquiries.companyId],
+    references: [companies.id],
+  }),
+}));
