@@ -135,3 +135,16 @@ export async function getCompanyBySlug(slug: string) {
     .limit(1);
   return row ?? null;
 }
+
+/** All location full-slugs — for the sitemap and static params. */
+export async function getAllLocationFullSlugs() {
+  return db.select({ fullSlug: locations.fullSlug }).from(locations);
+}
+
+/** All published company slugs + last-updated — for the sitemap. */
+export async function getAllPublishedCompanySlugs() {
+  return db
+    .select({ slug: companies.slug, updatedAt: companies.updatedAt })
+    .from(companies)
+    .where(eq(companies.isPublished, true));
+}

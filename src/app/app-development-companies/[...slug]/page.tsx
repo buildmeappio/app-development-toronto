@@ -9,7 +9,19 @@ import {
   getChildren,
   getRanking,
   getLocationsBySlugs,
+  getAllLocationFullSlugs,
 } from "@/lib/queries/locations";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbJsonLd, itemListJsonLd } from "@/lib/jsonld";
+
+// Cache location pages; refresh daily (monthly cron changes them at most once/mo).
+export const revalidate = 86400;
+
+// Pre-render the canonical all-time page for every location.
+export async function generateStaticParams() {
+  const locs = await getAllLocationFullSlugs().catch(() => []);
+  return locs.map((l) => ({ slug: l.fullSlug.split("/") }));
+}
 
 // A monthly period looks like "2026/08"; anything else is the all-time page.
 function parseSlug(slug: string[]): { fullSlug: string; period: string } {
@@ -84,6 +96,23 @@ export default async function LocationPage({
 
   return (
     <main className="pb-4">
+      <JsonLd
+        data={[
+          breadcrumbJsonLd(crumbs.map((c) => ({ name: c.label, url: c.href }))),
+          ...(ranking.length > 0
+            ? [
+                itemListJsonLd(
+                  `Top App Development Companies in ${location.name}`,
+                  ranking.map((r) => ({
+                    rank: r.rank,
+                    name: r.company.name,
+                    slug: r.company.slug,
+                  })),
+                ),
+              ]
+            : []),
+        ]}
+      />
       {/* Header band */}
       <div className="border-b border-slate-200 bg-slate-50">
         <Container className="py-8">

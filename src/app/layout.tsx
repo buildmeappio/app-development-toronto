@@ -25,6 +25,23 @@ export const metadata: Metadata = {
   },
   description:
     "The curated, monthly-ranked directory of app development companies across Toronto, Peel, York, Halton, and Durham.",
+  openGraph: {
+    type: "website",
+    siteName: "App Development Toronto",
+    locale: "en_CA",
+    url: siteUrl,
+    title:
+      "App Development Toronto — Top App Developers in the Greater Toronto Area",
+    description:
+      "The curated, monthly-ranked directory of app development companies across the GTA.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "App Development Toronto",
+    description:
+      "The curated, monthly-ranked directory of app development companies across the GTA.",
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

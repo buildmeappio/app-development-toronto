@@ -7,6 +7,15 @@ import { CompanyLogo } from "@/components/company-logo";
 import { StarRating } from "@/components/star-rating";
 import { Badge } from "@/components/badge";
 import { getCompanyBySlug } from "@/lib/queries/locations";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbJsonLd, companyJsonLd } from "@/lib/jsonld";
+
+// Cache company profiles; refresh daily. Empty static params => on-demand ISR
+// (each profile renders once on first hit, then is cached — no giant build).
+export const revalidate = 86400;
+export async function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({
   params,
@@ -46,6 +55,25 @@ export default async function CompanyPage({
 
   return (
     <main className="pb-8">
+      <JsonLd
+        data={[
+          breadcrumbJsonLd([
+            { name: "GTA", url: "/app-development-companies/gta" },
+            ...(hqLocationName && hqFullSlug
+              ? [{ name: hqLocationName, url: `/app-development-companies/${hqFullSlug}` }]
+              : []),
+            { name: company.name },
+          ]),
+          companyJsonLd({
+            name: company.name,
+            slug: company.slug,
+            website: company.website,
+            description: company.description,
+            addressText: company.addressText,
+            hqLocationName,
+          }),
+        ]}
+      />
       <div className="border-b border-slate-200 bg-slate-50">
         <Container className="py-8">
           <Breadcrumbs

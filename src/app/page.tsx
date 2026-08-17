@@ -1,11 +1,16 @@
 import Link from "next/link";
 import { Container } from "@/components/container";
 import { CompanyCard } from "@/components/company-card";
+import { JsonLd } from "@/components/json-ld";
+import { websiteJsonLd, organizationJsonLd } from "@/lib/jsonld";
 import {
   getRegionsWithCounts,
   getStats,
   getTopCompaniesBySlug,
 } from "@/lib/queries/locations";
+
+// Cache the homepage; refresh hourly.
+export const revalidate = 3600;
 
 export default async function Home() {
   let regions: Awaited<ReturnType<typeof getRegionsWithCounts>> = [];
@@ -24,6 +29,7 @@ export default async function Home() {
 
   return (
     <main>
+      <JsonLd data={[websiteJsonLd(), organizationJsonLd()]} />
       <Hero stats={stats} />
 
       {dbReady && (
