@@ -13,7 +13,8 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx --env-file=.env.local src/db/seed.ts",
     "curate:ingest": "tsx --env-file=.env.local src/db/ingest.ts",
-    "curate:rank": "tsx --env-file=.env.local src/db/rank.ts"
+    "curate:rank": "tsx --env-file=.env.local src/db/rank.ts",
+    "curate:reassess": "tsx --env-file=.env.local src/db/reassess.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

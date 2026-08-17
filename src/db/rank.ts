@@ -1,7 +1,7 @@
 // Env loaded via `tsx --env-file=.env.local` (see package.json curate:rank).
 import { db } from "./index";
 import { locations, companies, companyLocations, rankingSnapshots } from "./schema";
-import { inArray } from "drizzle-orm";
+import { inArray, eq } from "drizzle-orm";
 import { computeScore } from "../lib/ranking";
 
 /** Current month as "YYYY-MM". */
@@ -15,9 +15,13 @@ async function generateRankings() {
   const monthPeriod = currentPeriod();
 
   const allLocations = await db.select().from(locations);
-  const allCompanies = await db.select().from(companies);
+  const allCompanies = await db
+    .select()
+    .from(companies)
+    .where(eq(companies.isPublished, true));
   const links = await db.select().from(companyLocations);
 
+  // Only published companies are eligible; unpublished ones are skipped in roll-up.
   const companyById = new Map(allCompanies.map((c) => [c.id, c]));
 
   // location -> direct (companyId, weight) links.
@@ -59,6 +63,8 @@ async function generateRankings() {
     const bestWeight = new Map<string, number>();
     for (const locId of descendants(loc.id)) {
       for (const { companyId, weight } of directLinks.get(locId) ?? []) {
+        // Skip links to unpublished (filtered-out) companies.
+        if (!companyById.has(companyId)) continue;
         bestWeight.set(companyId, Math.max(bestWeight.get(companyId) ?? 0, weight));
       }
     }
