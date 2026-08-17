@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { Container } from "@/components/container";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { CompanyCard } from "@/components/company-card";
 import {
   getLocationByFullSlug,
   getChildren,
   getRanking,
+  getLocationsBySlugs,
 } from "@/lib/queries/locations";
 
 // A monthly period looks like "2026/08"; anything else is the all-time page.
@@ -40,6 +44,25 @@ export async function generateMetadata({
   };
 }
 
+async function buildBreadcrumbs(fullSlug: string) {
+  const segments = fullSlug.split("/");
+  const locs = await getLocationsBySlugs(segments).catch(() => []);
+  const bySlug = new Map(locs.map((l) => [l.slug, l]));
+  const items: { label: string; href?: string }[] = [
+    { label: "GTA", href: "/app-development-companies/gta" },
+  ];
+  segments.forEach((seg, i) => {
+    const loc = bySlug.get(seg);
+    if (!loc) return;
+    const isLast = i === segments.length - 1;
+    items.push({
+      label: loc.name,
+      href: isLast ? undefined : `/app-development-companies/${loc.fullSlug}`,
+    });
+  });
+  return items;
+}
+
 export default async function LocationPage({
   params,
 }: {
@@ -51,105 +74,115 @@ export default async function LocationPage({
   const location = await getLocationByFullSlug(fullSlug).catch(() => null);
   if (!location) notFound();
 
-  const [ranking, children] = await Promise.all([
+  const [ranking, children, crumbs] = await Promise.all([
     getRanking(location.id, period).catch(() => []),
     getChildren(location.id).catch(() => []),
+    buildBreadcrumbs(fullSlug),
   ]);
 
   const isMonthly = period !== "all-time";
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
-      <nav className="mb-6 text-sm text-gray-500">
-        <Link href="/" className="hover:text-blue-600">
-          GTA
-        </Link>{" "}
-        / <span className="text-gray-900">{location.name}</span>
-      </nav>
-
-      <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-        Top App Development Companies in {location.name}
-        {isMonthly && (
-          <span className="ml-2 text-xl font-normal text-gray-500">
-            {period}
-          </span>
-        )}
-      </h1>
-
-      {isMonthly && (
-        <p className="mt-2 text-sm text-gray-500">
-          Monthly snapshot.{" "}
-          <Link
-            href={`/app-development-companies/${fullSlug}`}
-            className="text-blue-600 hover:underline"
-          >
-            View current all-time ranking →
-          </Link>
-        </p>
-      )}
-
-      {children.length > 0 && (
-        <section className="mt-6">
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Explore within {location.name}
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {children.map((c) => (
+    <main className="pb-4">
+      {/* Header band */}
+      <div className="border-b border-slate-200 bg-slate-50">
+        <Container className="py-8">
+          <Breadcrumbs items={crumbs} />
+          <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+                Top App Development Companies in {location.name}
+              </h1>
+              <p className="mt-2 text-slate-500">
+                {ranking.length > 0
+                  ? `${ranking.length} companies ranked`
+                  : "Ranking coming soon"}
+                {isMonthly ? ` · ${period} snapshot` : " · Updated monthly"}
+              </p>
+            </div>
+            {isMonthly && (
               <Link
-                key={c.id}
-                href={`/app-development-companies/${c.fullSlug}`}
-                className="rounded-full border border-gray-200 px-3 py-1 text-sm text-gray-700 hover:border-blue-400"
+                href={`/app-development-companies/${fullSlug}`}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-400 hover:text-blue-600"
               >
-                {c.name}
+                View current ranking →
               </Link>
-            ))}
+            )}
           </div>
-        </section>
-      )}
 
-      <section className="mt-8">
-        {ranking.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-gray-300 p-6 text-gray-500">
-            No ranked companies yet for this location. Run the curation engine
-            and monthly ranking job to populate this page.
-          </p>
-        ) : (
-          <ol className="space-y-3">
-            {ranking.map(({ rank, company }) => (
-              <li
-                key={company.id}
-                className="flex items-center gap-4 rounded-lg border border-gray-200 p-4"
+          {children.length > 0 && (
+            <div className="mt-6">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Explore within {location.name}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {children.map((c) => (
+                  <Link
+                    key={c.id}
+                    href={`/app-development-companies/${c.fullSlug}`}
+                    className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm text-slate-700 transition hover:border-blue-400 hover:text-blue-600"
+                  >
+                    {c.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </Container>
+      </div>
+
+      {/* Body */}
+      <Container className="py-10">
+        <div className="grid gap-10 lg:grid-cols-[1fr_300px]">
+          <div>
+            {ranking.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
+                No ranked companies yet for this location.
+              </div>
+            ) : (
+              <ol className="space-y-3">
+                {ranking.map(({ rank, company, hqLocationName }) => (
+                  <li key={company.id}>
+                    <CompanyCard
+                      rank={rank}
+                      company={company}
+                      hqLocationName={hqLocationName}
+                    />
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
+          <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6">
+              <h2 className="text-sm font-semibold text-slate-900">
+                How we rank
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                Rankings combine verified review quality, profile completeness,
+                and years in business. Scores refresh monthly and sponsorships
+                never influence position.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6">
+              <h2 className="text-sm font-semibold text-blue-900">
+                Is this your company?
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-blue-800/80">
+                Claim your profile for free to manage your listing and reach more
+                buyers in {location.name}.
+              </p>
+              <Link
+                href="/#for-companies"
+                className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
               >
-                <span className="w-8 text-lg font-bold text-gray-400">
-                  {rank}
-                </span>
-                <div className="flex-1">
-                  <Link
-                    href={`/company/${company.slug}`}
-                    className="font-semibold text-gray-900 hover:text-blue-600"
-                  >
-                    {company.name}
-                  </Link>
-                  {company.googleRating != null && (
-                    <p className="text-sm text-gray-500">
-                      ★ {company.googleRating.toFixed(1)} (
-                      {company.googleRatingCount ?? 0} reviews)
-                    </p>
-                  )}
-                </div>
-                {company.claimStatus === "unclaimed" && (
-                  <Link
-                    href={`/company/${company.slug}/claim`}
-                    className="text-xs font-medium text-blue-600 hover:underline"
-                  >
-                    Claim this profile
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
+                Claim your listing
+              </Link>
+            </div>
+          </aside>
+        </div>
+      </Container>
     </main>
   );
 }

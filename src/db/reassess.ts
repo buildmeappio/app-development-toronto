@@ -28,7 +28,8 @@ async function reassess() {
         .where(eq(companies.id, c.id));
       if (!shouldPublish) nowHidden.push(c.name);
     }
-    shouldPublish ? published++ : unpublished++;
+    if (shouldPublish) published++;
+    else unpublished++;
   }
 
   console.log(`✓ Reassessed ${all.length} companies.`);

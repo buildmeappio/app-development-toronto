@@ -4,8 +4,9 @@ import { createServerClient } from "@supabase/ssr";
 /**
  * Refreshes the Supabase auth session on every request so Server Components
  * always see a valid session. Standard Supabase + Next.js SSR pattern.
+ * (Next 16 renamed the "middleware" convention to "proxy".)
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
