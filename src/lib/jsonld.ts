@@ -7,7 +7,7 @@
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://appdevelopmenttoronto.com";
 
-const SITE_NAME = "App Development Toronto";
+const SITE_NAME = "Toronto App Developers";
 
 export function websiteJsonLd() {
   return {

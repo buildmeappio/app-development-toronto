@@ -33,8 +33,9 @@ async function ingest() {
   const allLocations = await db.select().from(locations);
   const byName = new Map<string, (typeof allLocations)[number]>();
   for (const l of allLocations) byName.set(l.name.toLowerCase(), l);
-  const oldToronto = allLocations.find((l) => l.slug === "old-toronto");
-  if (oldToronto) byName.set("toronto", oldToronto);
+  // Addresses that say just "Toronto, ON" map to the downtown core district.
+  const downtown = allLocations.find((l) => l.slug === "downtown-toronto");
+  if (downtown) byName.set("toronto", downtown);
 
   const resolveLocation = (
     address: string | undefined,

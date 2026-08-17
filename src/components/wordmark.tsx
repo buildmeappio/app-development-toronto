@@ -19,7 +19,7 @@ export function Wordmark({
         {"</>"}
       </span>
       <span className={`font-bold tracking-tight text-slate-900 ${text}`}>
-        App Development <span className="text-blue-600">Toronto</span>
+        Toronto <span className="text-blue-600">App Developers</span>
       </span>
     </span>
   );

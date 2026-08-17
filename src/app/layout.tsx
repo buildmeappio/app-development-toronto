@@ -20,24 +20,24 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
     default:
-      "App Development Toronto — Top App Developers in the Greater Toronto Area",
-    template: "%s | App Development Toronto",
+      "Toronto App Developers — Top App Development Companies in the GTA",
+    template: "%s | Toronto App Developers",
   },
   description:
     "The curated, monthly-ranked directory of app development companies across Toronto, Peel, York, Halton, and Durham.",
   openGraph: {
     type: "website",
-    siteName: "App Development Toronto",
+    siteName: "Toronto App Developers",
     locale: "en_CA",
     url: siteUrl,
     title:
-      "App Development Toronto — Top App Developers in the Greater Toronto Area",
+      "Toronto App Developers — Top App Development Companies in the GTA",
     description:
       "The curated, monthly-ranked directory of app development companies across the GTA.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "App Development Toronto",
+    title: "Toronto App Developers",
     description:
       "The curated, monthly-ranked directory of app development companies across the GTA.",
   },

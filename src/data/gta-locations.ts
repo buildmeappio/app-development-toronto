@@ -29,7 +29,7 @@ export const GTA_TREE: SeedLocation = {
       lat: 43.6532,
       lng: -79.3832,
       children: [
-        { name: "Old Toronto", slug: "old-toronto", type: "district" },
+        { name: "Downtown Toronto", slug: "downtown-toronto", type: "district" },
         { name: "North York", slug: "north-york", type: "district" },
         { name: "Scarborough", slug: "scarborough", type: "district" },
         { name: "Etobicoke", slug: "etobicoke", type: "district" },

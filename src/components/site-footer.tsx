@@ -4,7 +4,7 @@ import { Wordmark } from "./wordmark";
 import { getRegions, getLocationsBySlugs } from "@/lib/queries/locations";
 
 const FOOTER_CITY_SLUGS = [
-  "old-toronto",
+  "downtown-toronto",
   "mississauga",
   "brampton",
   "markham",
@@ -61,7 +61,7 @@ export async function SiteFooter() {
       <div className="border-t border-slate-200">
         <Container className="flex flex-col items-center justify-between gap-2 py-6 text-xs text-slate-400 sm:flex-row">
           <p>
-            © {new Date().getFullYear()} App Development Toronto. All rights
+            © {new Date().getFullYear()} Toronto App Developers. All rights
             reserved.
           </p>
           <p>Business data sourced from Google. Rankings updated monthly.</p>
