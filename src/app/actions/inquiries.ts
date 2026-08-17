@@ -1,13 +1,46 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { inquiries, companies } from "@/db/schema";
 import { sendEmail } from "@/lib/email";
 
-/** Public "request a call" lead capture — no auth required. */
+// Abuse limits within a rolling hour.
+const MAX_PER_IP_PER_HOUR = 5;
+const MAX_PER_EMAIL_PER_HOUR = 3;
+
+async function clientIpHash(): Promise<string> {
+  const h = await headers();
+  const ip =
+    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    h.get("x-real-ip") ||
+    "unknown";
+  return createHash("sha256").update(ip).digest("hex").slice(0, 32);
+}
+
+async function countSince(field: "ipHash" | "email", value: string) {
+  const [row] = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(inquiries)
+    .where(
+      and(
+        eq(inquiries[field], value),
+        gt(inquiries.createdAt, sql`now() - interval '1 hour'`),
+      ),
+    );
+  return row?.c ?? 0;
+}
+
+/** Public "request a call" lead capture — no auth. Honeypot + rate limited. */
 export async function submitInquiryAction(formData: FormData) {
+  // Honeypot: real users never see or fill this. Silently accept & drop.
+  if (String(formData.get("website") ?? "").trim()) {
+    redirect("/upgrade?sent=1");
+  }
+
   const val = (k: string) => {
     const v = String(formData.get(k) ?? "").trim();
     return v.length ? v : null;
@@ -17,6 +50,18 @@ export async function submitInquiryAction(formData: FormData) {
   const email = val("email");
   if (!contactName || !email) {
     throw new Error("Name and email are required.");
+  }
+
+  const ipHash = await clientIpHash();
+
+  // Rate limit — over the cap, silently pretend success (no insert, no email)
+  // so bots get no signal and we don't burn the mail quota.
+  const [ipCount, emailCount] = await Promise.all([
+    countSince("ipHash", ipHash),
+    countSince("email", email),
+  ]);
+  if (ipCount >= MAX_PER_IP_PER_HOUR || emailCount >= MAX_PER_EMAIL_PER_HOUR) {
+    redirect("/upgrade?sent=1");
   }
 
   const companyId = val("companyId");
@@ -32,9 +77,9 @@ export async function submitInquiryAction(formData: FormData) {
     phone,
     message,
     interestedIn: interests.join(",") || null,
+    ipHash,
   });
 
-  // Look up the company name for the notification (if tied to one).
   let companyName = "—";
   if (companyId) {
     const [c] = await db

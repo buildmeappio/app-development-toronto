@@ -364,6 +364,8 @@ export const inquiries = pgTable(
     interestedIn: text("interested_in"),
     message: text("message"),
     status: inquiryStatusEnum("status").notNull().default("new"),
+    // Hashed client IP (not raw) — used only for abuse rate-limiting.
+    ipHash: text("ip_hash"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

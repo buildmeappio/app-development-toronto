@@ -65,6 +65,14 @@ export default async function UpgradePage({
       >
         {company && <input type="hidden" name="companyId" value={company.id} />}
 
+        {/* Honeypot — hidden from real users; bots fill it and get dropped. */}
+        <div aria-hidden className="absolute left-[-9999px] top-[-9999px]" style={{ position: "absolute" }}>
+          <label>
+            Website
+            <input type="text" name="website" tabIndex={-1} autoComplete="off" />
+          </label>
+        </div>
+
         {company && (
           <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
             Requesting for <strong>{company.name}</strong>
