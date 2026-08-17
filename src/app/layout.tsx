@@ -19,8 +19,9 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "AppDevGTA — Top App Development Companies in the Greater Toronto Area",
-    template: "%s | AppDevGTA",
+    default:
+      "App Development Toronto — Top App Developers in the Greater Toronto Area",
+    template: "%s | App Development Toronto",
   },
   description:
     "The curated, monthly-ranked directory of app development companies across Toronto, Peel, York, Halton, and Durham.",

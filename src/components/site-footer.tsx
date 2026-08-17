@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Container } from "./container";
+import { Wordmark } from "./wordmark";
 import { getRegions, getLocationsBySlugs } from "@/lib/queries/locations";
 
 const FOOTER_CITY_SLUGS = [
@@ -27,14 +28,7 @@ export async function SiteFooter() {
     <footer className="mt-24 border-t border-slate-200 bg-slate-50">
       <Container className="grid grid-cols-2 gap-8 py-14 md:grid-cols-4">
         <div className="col-span-2 md:col-span-1">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 font-mono text-xs font-bold text-white">
-              {"</>"}
-            </span>
-            <span className="font-bold tracking-tight text-slate-900">
-              AppDev<span className="text-blue-600">GTA</span>
-            </span>
-          </div>
+          <Wordmark size="sm" />
           <p className="mt-3 max-w-xs text-sm text-slate-500">
             The curated directory of app development companies across the Greater
             Toronto Area. Ranked monthly.
@@ -66,7 +60,10 @@ export async function SiteFooter() {
 
       <div className="border-t border-slate-200">
         <Container className="flex flex-col items-center justify-between gap-2 py-6 text-xs text-slate-400 sm:flex-row">
-          <p>© {new Date().getFullYear()} AppDevGTA. All rights reserved.</p>
+          <p>
+            © {new Date().getFullYear()} App Development Toronto. All rights
+            reserved.
+          </p>
           <p>Business data sourced from Google. Rankings updated monthly.</p>
         </Container>
       </div>
