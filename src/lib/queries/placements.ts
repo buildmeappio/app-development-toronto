@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { placements, companies, locations } from "@/db/schema";
 import { alias } from "drizzle-orm/pg-core";
-import { and, eq, or, isNull, gt, lte, sql } from "drizzle-orm";
+import { and, eq, or, isNull, gt, lte, inArray, sql } from "drizzle-orm";
 
 // A placement is live when active, started, and not yet expired.
 function activeCond() {
@@ -19,6 +19,23 @@ export async function getActiveBadgeCompanyIds(): Promise<Set<string>> {
     .from(placements)
     .where(and(eq(placements.type, "badge"), activeCond()));
   return new Set(rows.map((r) => r.id));
+}
+
+const plDash = alias(locations, "pl_dashboard");
+
+/** Active placements for a set of companies — for the rep dashboard. */
+export async function getActivePlacementsForCompanyIds(ids: string[]) {
+  if (ids.length === 0) return [];
+  return db
+    .select({
+      companyId: placements.companyId,
+      type: placements.type,
+      endsAt: placements.endsAt,
+      locationName: plDash.name,
+    })
+    .from(placements)
+    .leftJoin(plDash, eq(placements.locationId, plDash.id))
+    .where(and(inArray(placements.companyId, ids), activeCond()));
 }
 
 const pl = alias(locations, "pl_featured");
