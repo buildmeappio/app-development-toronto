@@ -11,7 +11,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx --env-file=.env.local src/db/seed.ts"
+    "db:seed": "tsx --env-file=.env.local src/db/seed.ts",
+    "curate:ingest": "tsx --env-file=.env.local src/db/ingest.ts",
+    "curate:rank": "tsx --env-file=.env.local src/db/rank.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
