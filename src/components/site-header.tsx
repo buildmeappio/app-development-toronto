@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Container } from "./container";
 import { Wordmark } from "./wordmark";
+import { HeaderAuth } from "./header-auth";
 
 export function SiteHeader() {
   return (
@@ -20,14 +21,7 @@ export function SiteHeader() {
           </Link>
         </nav>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/#for-companies"
-            className="hidden rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:inline-block"
-          >
-            Claim your listing
-          </Link>
-        </div>
+        <HeaderAuth />
       </Container>
     </header>
   );

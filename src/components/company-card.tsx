@@ -81,7 +81,7 @@ export function CompanyCard({
         )}
         {!claimed && (
           <Link
-            href={profileHref}
+            href={`${profileHref}/claim`}
             className="rounded-lg px-3.5 py-2 text-sm font-medium text-blue-600 transition hover:bg-blue-50"
           >
             Claim profile

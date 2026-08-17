@@ -165,7 +165,7 @@ export default async function CompanyPage({
                   portfolio, and reach more buyers.
                 </p>
                 <Link
-                  href="/#for-companies"
+                  href={`/company/${company.slug}/claim`}
                   className="mt-4 inline-block w-full rounded-lg bg-blue-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-blue-700"
                 >
                   Claim this profile — free
