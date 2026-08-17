@@ -27,18 +27,46 @@ export async function generateStaticParams() {
   return locs.map((l) => ({ slug: l.fullSlug.split("/") }));
 }
 
-// A monthly period looks like "2026/08"; anything else is the all-time page.
-function parseSlug(slug: string[]): { fullSlug: string; period: string } {
-  const last2 = slug.slice(-2);
+const PER_PAGE = 24;
+
+// URL shapes handled: ".../city", ".../city/2026/08" (monthly),
+// ".../city/page/2" and ".../city/2026/08/page/2" (paginated).
+function parseSlug(slug: string[]): {
+  fullSlug: string;
+  period: string;
+  page: number;
+} {
+  let segs = [...slug];
+  let page = 1;
+
+  // Trailing "page/N"
+  if (
+    segs.length >= 2 &&
+    segs[segs.length - 2] === "page" &&
+    /^\d+$/.test(segs[segs.length - 1])
+  ) {
+    page = Math.max(1, Number.parseInt(segs[segs.length - 1], 10));
+    segs = segs.slice(0, -2);
+  }
+
+  // Trailing "YYYY/MM"
+  const last2 = segs.slice(-2);
   const isMonthly =
     last2.length === 2 && /^\d{4}$/.test(last2[0]) && /^\d{2}$/.test(last2[1]);
   if (isMonthly) {
     return {
-      fullSlug: slug.slice(0, -2).join("/"),
+      fullSlug: segs.slice(0, -2).join("/"),
       period: `${last2[0]}-${last2[1]}`,
+      page,
     };
   }
-  return { fullSlug: slug.join("/"), period: "all-time" };
+  return { fullSlug: segs.join("/"), period: "all-time", page };
+}
+
+function pagePath(fullSlug: string, period: string, page: number): string {
+  const periodPart = period === "all-time" ? "" : `/${period.replace("-", "/")}`;
+  const pagePart = page > 1 ? `/page/${page}` : "";
+  return `/app-development-companies/${fullSlug}${periodPart}${pagePart}`;
 }
 
 export async function generateMetadata({
@@ -47,16 +75,17 @@ export async function generateMetadata({
   params: Promise<{ slug: string[] }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const { fullSlug, period } = parseSlug(slug);
+  const { fullSlug, period, page } = parseSlug(slug);
   const location = await getLocationByFullSlug(fullSlug).catch(() => null);
   if (!location) return { title: "Not found" };
 
   const periodLabel = period === "all-time" ? "" : ` — ${period}`;
-  const title = `Top App Development Companies in ${location.name}${periodLabel}`;
+  const pageLabel = page > 1 ? ` — Page ${page}` : "";
+  const title = `Top App Development Companies in ${location.name}${periodLabel}${pageLabel}`;
   return {
     title,
     description: `Ranked list of the best app development companies in ${location.name}, GTA. Curated and updated monthly.`,
-    alternates: { canonical: `/app-development-companies/${fullSlug}` },
+    alternates: { canonical: pagePath(fullSlug, period, page) },
   };
 }
 
@@ -85,12 +114,12 @@ export default async function LocationPage({
   params: Promise<{ slug: string[] }>;
 }) {
   const { slug } = await params;
-  const { fullSlug, period } = parseSlug(slug);
+  const { fullSlug, period, page } = parseSlug(slug);
 
   const location = await getLocationByFullSlug(fullSlug).catch(() => null);
   if (!location) notFound();
 
-  const [ranking, children, crumbs, featured, badgeIds] = await Promise.all([
+  const [ranking, children, crumbs, featuredAll, badgeIds] = await Promise.all([
     getRanking(location.id, period).catch(() => []),
     getChildren(location.id).catch(() => []),
     buildBreadcrumbs(fullSlug),
@@ -99,17 +128,24 @@ export default async function LocationPage({
   ]);
 
   const isMonthly = period !== "all-time";
-  const featuredIds = new Set(featured.map((f) => f.company.id));
+  const featuredIds = new Set(featuredAll.map((f) => f.company.id));
   // Featured firms are pinned above; drop them from the organic list to avoid
   // showing them twice, then renumber the organic ranks for display.
-  const organic = ranking.filter((r) => !featuredIds.has(r.company.id));
+  const organicAll = ranking.filter((r) => !featuredIds.has(r.company.id));
+
+  // Pagination — featured pins only on page 1.
+  const totalPages = Math.max(1, Math.ceil(organicAll.length / PER_PAGE));
+  if (page > totalPages && page > 1) notFound();
+  const featured = page === 1 ? featuredAll : [];
+  const start = (page - 1) * PER_PAGE;
+  const organic = organicAll.slice(start, start + PER_PAGE);
 
   return (
     <main className="pb-4">
       <JsonLd
         data={[
           breadcrumbJsonLd(crumbs.map((c) => ({ name: c.label, url: c.href }))),
-          ...(ranking.length > 0
+          ...(page === 1 && ranking.length > 0
             ? [
                 itemListJsonLd(
                   `Top App Development Companies in ${location.name}`,
@@ -201,7 +237,7 @@ export default async function LocationPage({
                 {organic.map(({ company, hqLocationName }, i) => (
                   <li key={company.id}>
                     <CompanyCard
-                      rank={i + 1}
+                      rank={start + i + 1}
                       company={company}
                       hqLocationName={hqLocationName}
                       verified={badgeIds.has(company.id)}
@@ -209,6 +245,34 @@ export default async function LocationPage({
                   </li>
                 ))}
               </ol>
+            )}
+
+            {totalPages > 1 && (
+              <nav className="flex items-center justify-between border-t border-slate-200 pt-6">
+                {page > 1 ? (
+                  <Link
+                    href={pagePath(fullSlug, period, page - 1)}
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-400 hover:text-blue-600"
+                  >
+                    ← Previous
+                  </Link>
+                ) : (
+                  <span />
+                )}
+                <span className="text-sm text-slate-500">
+                  Page {page} of {totalPages}
+                </span>
+                {page < totalPages ? (
+                  <Link
+                    href={pagePath(fullSlug, period, page + 1)}
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-400 hover:text-blue-600"
+                  >
+                    Next →
+                  </Link>
+                ) : (
+                  <span />
+                )}
+              </nav>
             )}
           </div>
 

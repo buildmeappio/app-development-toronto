@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Container } from "./container";
 import { Wordmark } from "./wordmark";
 import { HeaderAuth } from "./header-auth";
+import { MobileNav } from "./mobile-nav";
 
 export function SiteHeader() {
   return (
@@ -21,7 +22,10 @@ export function SiteHeader() {
           </Link>
         </nav>
 
-        <HeaderAuth />
+        <div className="hidden md:block">
+          <HeaderAuth />
+        </div>
+        <MobileNav />
       </Container>
     </header>
   );

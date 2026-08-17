@@ -15,6 +15,7 @@
     "curate:ingest": "tsx --env-file=.env.local src/db/ingest.ts",
     "curate:rank": "tsx --env-file=.env.local src/db/rank.ts",
     "curate:reassess": "tsx --env-file=.env.local src/db/reassess.ts",
+    "curate:refresh": "tsx --env-file=.env.local src/db/refresh-ratings.ts",
     "admin:inquiries": "tsx --env-file=.env.local src/db/list-inquiries.ts",
     "admin:activate": "tsx --env-file=.env.local src/db/activate-placement.ts",
     "admin:claims": "tsx --env-file=.env.local src/db/list-claims.ts",

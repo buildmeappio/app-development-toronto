@@ -53,8 +53,9 @@ export async function SiteFooter() {
 
         <FooterColumn title="Company">
           <FooterLink href="/#how">How it works</FooterLink>
-          <FooterLink href="/#for-companies">For companies</FooterLink>
-          <FooterLink href="/#for-companies">Claim your listing</FooterLink>
+          <FooterLink href="/pricing">Pricing</FooterLink>
+          <FooterLink href="/privacy">Privacy</FooterLink>
+          <FooterLink href="/terms">Terms</FooterLink>
         </FooterColumn>
       </Container>
 

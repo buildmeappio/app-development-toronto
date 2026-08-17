@@ -72,3 +72,27 @@ export async function searchText(
   }
   return res.json();
 }
+
+/** Fetch current details for one place (cheaper than search) — used to refresh
+ * ratings for companies we already know. Returns null if the place is gone. */
+export async function placeDetails(placeId: string): Promise<PlaceResult | null> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) throw new Error("GOOGLE_PLACES_API_KEY is not set");
+
+  const res = await fetch(
+    `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`,
+    {
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask":
+          "id,displayName,rating,userRatingCount,businessStatus,websiteUri",
+      },
+    },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Place Details ${res.status}: ${text.slice(0, 200)}`);
+  }
+  return res.json();
+}
