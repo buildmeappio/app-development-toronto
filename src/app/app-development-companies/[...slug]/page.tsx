@@ -86,6 +86,9 @@ export async function generateMetadata({
     title,
     description: `Ranked list of the best app development companies in ${location.name}, GTA. Curated and updated monthly.`,
     alternates: { canonical: pagePath(fullSlug, period, page) },
+    // Dated monthly snapshots are archives — keep them out of the index (thin
+    // duplicates of the canonical all-time page until monthly data diverges).
+    ...(period !== "all-time" ? { robots: { index: false, follow: true } } : {}),
   };
 }
 

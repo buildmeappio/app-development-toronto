@@ -4,7 +4,7 @@
 //   npm run admin:merge
 import { db } from "./index";
 import { companies, companyLocations, claims, placements, inquiries } from "./schema";
-import { eq, isNotNull, inArray } from "drizzle-orm";
+import { isNotNull, inArray } from "drizzle-orm";
 
 async function main() {
   const all = await db
