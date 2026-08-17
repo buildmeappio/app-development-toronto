@@ -59,34 +59,49 @@ async function ingest() {
     const hqLocation = resolveLocation(place.formattedAddress, queriedLoc);
     const domain = extractDomain(place.websiteUri);
 
-    const [existing] = await db
-      .select({ id: companies.id })
-      .from(companies)
-      .where(eq(companies.googlePlaceId, place.id))
-      .limit(1);
+    // Company identity is the DOMAIN (one company per firm, multiple offices).
+    // Fall back to place_id only when there's no website/domain.
+    let existing: { id: string; isPublished: boolean; googleRatingCount: number | null } | undefined;
+    if (domain) {
+      [existing] = await db
+        .select({ id: companies.id, isPublished: companies.isPublished, googleRatingCount: companies.googleRatingCount })
+        .from(companies)
+        .where(eq(companies.domain, domain))
+        .limit(1);
+    }
+    if (!existing) {
+      [existing] = await db
+        .select({ id: companies.id, isPublished: companies.isPublished, googleRatingCount: companies.googleRatingCount })
+        .from(companies)
+        .where(eq(companies.googlePlaceId, place.id))
+        .limit(1);
+    }
 
     let companyId: string;
     if (existing) {
-      await db
-        .update(companies)
-        .set({
-          name,
-          website: place.websiteUri ?? null,
-          domain,
-          googleRating: place.rating ?? null,
-          googleRatingCount: place.userRatingCount ?? null,
-          addressText: place.formattedAddress ?? null,
-          lat: place.location?.latitude ?? null,
-          lng: place.location?.longitude ?? null,
-          isPublished: publishable,
-          updatedAt: new Date(),
-        })
-        .where(eq(companies.id, existing.id));
-      companyId = existing.id;
-      if (!seen.has(place.id)) {
-        stats.updated++;
-        if (!publishable) stats.unpublished++;
+      // Promote this listing's figures to represent the company only if it's the
+      // most-reviewed office we've seen (keeps the strongest rating).
+      const thisCount = place.userRatingCount ?? 0;
+      const promote = thisCount >= (existing.googleRatingCount ?? 0);
+      const set: Record<string, unknown> = {
+        website: place.websiteUri ?? undefined,
+        domain: domain ?? undefined,
+        isPublished: existing.isPublished || publishable,
+        updatedAt: new Date(),
+      };
+      if (promote) {
+        set.name = name;
+        set.googlePlaceId = place.id;
+        set.googleRating = place.rating ?? null;
+        set.googleRatingCount = place.userRatingCount ?? null;
+        set.addressText = place.formattedAddress ?? null;
+        set.lat = place.location?.latitude ?? null;
+        set.lng = place.location?.longitude ?? null;
+        set.primaryLocationId = hqLocation.id;
       }
+      await db.update(companies).set(set).where(eq(companies.id, existing.id));
+      companyId = existing.id;
+      if (!seen.has(place.id)) stats.updated++;
     } else {
       // New + not publishable → skip entirely (don't pollute the directory).
       if (!publishable) {
@@ -97,13 +112,15 @@ async function ingest() {
         seen.add(place.id);
         return;
       }
-      let slug = `${slugBase(name)}-${hqLocation.slug}`;
-      const [clash] = await db
-        .select({ id: companies.id })
-        .from(companies)
-        .where(eq(companies.slug, slug))
-        .limit(1);
-      if (clash) slug = `${slug}-${place.id.slice(-6).toLowerCase()}`;
+      // Clean name-only slug; numeric suffix only on a genuine collision.
+      const base = slugBase(name);
+      let slug = base;
+      let n = 2;
+      while (
+        (await db.select({ id: companies.id }).from(companies).where(eq(companies.slug, slug)).limit(1)).length
+      ) {
+        slug = `${base}-${n++}`;
+      }
 
       const [row] = await db
         .insert(companies)
