@@ -30,6 +30,7 @@ async function main() {
 
   // "featured" can be scoped to a city; "badge" is global.
   let locationId: string | null = null;
+  let locationFullSlug: string | null = null;
   if (type === "featured" && citySlug) {
     const [loc] = await db
       .select()
@@ -38,6 +39,7 @@ async function main() {
       .limit(1);
     if (!loc) throw new Error(`Location not found: ${citySlug}`);
     locationId = loc.id;
+    locationFullSlug = loc.fullSlug;
   }
 
   const endsAt = new Date(Date.now() + days * 86_400_000);
@@ -54,6 +56,30 @@ async function main() {
       `${type === "featured" ? (citySlug ? ` in ${citySlug}` : " (site-wide)") : ""}` +
       ` for ${days} days (until ${endsAt.toISOString().slice(0, 10)}).`,
   );
+
+  // Bust the ISR cache so the feature shows immediately.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  const secret = process.env.CRON_SECRET;
+  if (siteUrl && secret) {
+    const paths = [`/company/${company.slug}`];
+    if (locationFullSlug) {
+      paths.push(`/app-development-companies/${locationFullSlug}`);
+    }
+    try {
+      const res = await fetch(`${siteUrl}/api/revalidate`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${secret}`,
+        },
+        body: JSON.stringify({ paths }),
+      });
+      const json = await res.json();
+      console.log(`  revalidated: ${JSON.stringify(json.revalidated ?? [])}`);
+    } catch {
+      console.log("  (revalidate skipped — page will refresh within 24h)");
+    }
+  }
 }
 
 main()
