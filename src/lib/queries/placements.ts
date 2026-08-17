@@ -12,6 +12,18 @@ function activeCond() {
   );
 }
 
+/** Is a single company currently Verified (active badge placement)? */
+export async function isCompanyVerified(companyId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: placements.id })
+    .from(placements)
+    .where(
+      and(eq(placements.companyId, companyId), eq(placements.type, "badge"), activeCond()),
+    )
+    .limit(1);
+  return !!row;
+}
+
 /** Company ids with an active "verified badge" placement (badges are global). */
 export async function getActiveBadgeCompanyIds(): Promise<Set<string>> {
   const rows = await db

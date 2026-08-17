@@ -1,7 +1,21 @@
 import { db } from "@/db";
-import { locations, rankingSnapshots, companies } from "@/db/schema";
+import {
+  locations,
+  rankingSnapshots,
+  companies,
+  caseStudies,
+} from "@/db/schema";
 import { alias } from "drizzle-orm/pg-core";
-import { eq, and, asc, sql, inArray } from "drizzle-orm";
+import { eq, and, asc, desc, sql, inArray } from "drizzle-orm";
+
+/** Portfolio / case studies for a company, newest first. */
+export async function getCaseStudies(companyId: string) {
+  return db
+    .select()
+    .from(caseStudies)
+    .where(eq(caseStudies.companyId, companyId))
+    .orderBy(desc(caseStudies.createdAt));
+}
 
 /** The GTA metro root. */
 export async function getMetro() {

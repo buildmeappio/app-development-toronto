@@ -15,6 +15,13 @@
       "when": 1786976031448,
       "tag": "0001_third_nitro",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786987063370,
+      "tag": "0002_third_sally_floyd",
+      "breakpoints": true
     }
   ]
 }

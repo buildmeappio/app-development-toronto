@@ -1,11 +1,17 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { companies, claims } from "@/db/schema";
+import {
+  companies,
+  claims,
+  caseStudies,
+  FREE_CASE_STUDY_LIMIT,
+} from "@/db/schema";
 import { getCurrentUser, ensureProfile, hasApprovedClaim } from "@/lib/auth";
+import { isCompanyVerified } from "@/lib/queries/placements";
 
 function emailDomain(email?: string | null): string | null {
   return email?.split("@")[1]?.toLowerCase() ?? null;
@@ -94,6 +100,8 @@ export async function updateProfileAction(formData: FormData) {
   const foundedYear =
     parsedYear && Number.isFinite(parsedYear) ? parsedYear : null;
 
+  const focusAreas = formData.getAll("focusAreas").map(String).filter(Boolean);
+
   await db
     .update(companies)
     .set({
@@ -103,10 +111,90 @@ export async function updateProfileAction(formData: FormData) {
       minProjectSize: str("minProjectSize"),
       logoUrl: str("logoUrl"),
       foundedYear,
+      focusAreas,
+      linkedinUrl: str("linkedinUrl"),
+      twitterUrl: str("twitterUrl"),
+      facebookUrl: str("facebookUrl"),
+      instagramUrl: str("instagramUrl"),
       updatedAt: new Date(),
     })
     .where(eq(companies.id, companyId));
 
   revalidatePath(`/company/${company.slug}`);
   redirect(`/company/${company.slug}/edit?saved=1`);
+}
+
+/** Add a case study. Free profiles are capped; Verified unlocks unlimited. */
+export async function addCaseStudyAction(formData: FormData) {
+  const user = await getCurrentUser();
+  const companyId = String(formData.get("companyId"));
+  if (!user) redirect("/login?next=/dashboard");
+  if (!(await hasApprovedClaim(user.id, companyId))) {
+    throw new Error("You are not authorized to edit this company.");
+  }
+
+  const [company] = await db
+    .select({ slug: companies.slug })
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .limit(1);
+  if (!company) throw new Error("Company not found");
+
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) throw new Error("A title is required.");
+
+  // Enforce the free cap unless the company is Verified.
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(caseStudies)
+    .where(eq(caseStudies.companyId, companyId));
+  if (count >= FREE_CASE_STUDY_LIMIT && !(await isCompanyVerified(companyId))) {
+    redirect(`/company/${company.slug}/edit?limit=1`);
+  }
+
+  const str = (k: string) => {
+    const v = String(formData.get(k) ?? "").trim();
+    return v.length ? v : null;
+  };
+  await db.insert(caseStudies).values({
+    companyId,
+    title,
+    description: str("description"),
+    url: str("url"),
+    imageUrl: str("imageUrl"),
+  });
+
+  revalidatePath(`/company/${company.slug}`);
+  redirect(`/company/${company.slug}/edit?saved=1#portfolio`);
+}
+
+/** Delete a case study the signed-in user owns. */
+export async function deleteCaseStudyAction(formData: FormData) {
+  const user = await getCurrentUser();
+  const caseStudyId = String(formData.get("caseStudyId"));
+  if (!user) redirect("/login?next=/dashboard");
+
+  const [cs] = await db
+    .select({ companyId: caseStudies.companyId })
+    .from(caseStudies)
+    .where(eq(caseStudies.id, caseStudyId))
+    .limit(1);
+  if (!cs) return;
+  if (!(await hasApprovedClaim(user.id, cs.companyId))) {
+    throw new Error("Not authorized.");
+  }
+
+  const [company] = await db
+    .select({ slug: companies.slug })
+    .from(companies)
+    .where(eq(companies.id, cs.companyId))
+    .limit(1);
+
+  await db.delete(caseStudies).where(eq(caseStudies.id, caseStudyId));
+
+  if (company) {
+    revalidatePath(`/company/${company.slug}`);
+    redirect(`/company/${company.slug}/edit?saved=1#portfolio`);
+  }
+  redirect("/dashboard");
 }

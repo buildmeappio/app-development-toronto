@@ -123,6 +123,13 @@ export const companies = pgTable(
     minProjectSize: text("min_project_size"), // e.g. "$10,000+"
     hourlyRate: text("hourly_rate"), // e.g. "$50-$99/hr"
 
+    // Rep-editable profile enrichment (all free to fill in).
+    focusAreas: text("focus_areas").array(), // e.g. ["iOS apps","Web apps"]
+    linkedinUrl: text("linkedin_url"),
+    twitterUrl: text("twitter_url"),
+    facebookUrl: text("facebook_url"),
+    instagramUrl: text("instagram_url"),
+
     // Google Places signals — our day-one review-quality proxy.
     googlePlaceId: text("google_place_id"),
     googleRating: doublePrecision("google_rating"),
@@ -373,3 +380,50 @@ export const inquiriesRelations = relations(inquiries, ({ one }) => ({
     references: [companies.id],
   }),
 }));
+
+/* ---------------------------------------------------------------------------
+ * Case studies — portfolio entries a claimed company can add. Free profiles are
+ * capped at 3; the paid "Verified" tier unlocks unlimited (Clutch's model).
+ * ------------------------------------------------------------------------- */
+
+export const caseStudies = pgTable(
+  "case_studies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    url: text("url"),
+    imageUrl: text("image_url"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("case_studies_company_idx").on(t.companyId)],
+);
+
+export const caseStudiesRelations = relations(caseStudies, ({ one }) => ({
+  company: one(companies, {
+    fields: [caseStudies.companyId],
+    references: [companies.id],
+  }),
+}));
+
+// The free case-study cap; Verified unlocks unlimited.
+export const FREE_CASE_STUDY_LIMIT = 3;
+
+// Fixed taxonomy of service focus areas reps can tag (also powers filtering).
+export const FOCUS_AREAS = [
+  "iOS apps",
+  "Android apps",
+  "Cross-platform (Flutter / React Native)",
+  "Web apps",
+  "Backend & APIs",
+  "UI/UX design",
+  "MVP & prototyping",
+  "AI & ML integration",
+  "E-commerce",
+  "App maintenance & support",
+] as const;

@@ -6,7 +6,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CompanyLogo } from "@/components/company-logo";
 import { StarRating } from "@/components/star-rating";
 import { Badge } from "@/components/badge";
-import { getCompanyBySlug } from "@/lib/queries/locations";
+import { getCompanyBySlug, getCaseStudies } from "@/lib/queries/locations";
 import { getActiveBadgeCompanyIds } from "@/lib/queries/placements";
 import { JsonLd } from "@/components/json-ld";
 import { breadcrumbJsonLd, companyJsonLd } from "@/lib/jsonld";
@@ -45,10 +45,18 @@ export default async function CompanyPage({
 
   const { company, hqLocationName, hqFullSlug } = row;
   const claimed = company.claimStatus === "claimed";
-  const badgeIds = await getActiveBadgeCompanyIds().catch(
-    () => new Set<string>(),
-  );
+  const [badgeIds, studies] = await Promise.all([
+    getActiveBadgeCompanyIds().catch(() => new Set<string>()),
+    getCaseStudies(company.id).catch(() => []),
+  ]);
   const verified = badgeIds.has(company.id);
+  const focusAreas = company.focusAreas ?? [];
+  const socials = [
+    { label: "LinkedIn", url: company.linkedinUrl },
+    { label: "X", url: company.twitterUrl },
+    { label: "Facebook", url: company.facebookUrl },
+    { label: "Instagram", url: company.instagramUrl },
+  ].filter((s) => s.url);
 
   const details = [
     { label: "Founded", value: company.foundedYear?.toString() },
@@ -139,7 +147,52 @@ export default async function CompanyPage({
                 {company.description ??
                   `${company.name} is an app development company${hqLocationName ? ` based in ${hqLocationName}` : ""} in the Greater Toronto Area. This profile was curated automatically — if you represent ${company.name}, claim it to add a full description, portfolio, and services.`}
               </p>
+              {focusAreas.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {focusAreas.map((area) => (
+                    <span
+                      key={area}
+                      className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-100"
+                    >
+                      {area}
+                    </span>
+                  ))}
+                </div>
+              )}
             </section>
+
+            {studies.length > 0 && (
+              <section>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Portfolio
+                </h2>
+                <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {studies.map((cs) => (
+                    <div
+                      key={cs.id}
+                      className="rounded-2xl border border-slate-200 p-5"
+                    >
+                      <h3 className="font-semibold text-slate-900">{cs.title}</h3>
+                      {cs.description && (
+                        <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+                          {cs.description}
+                        </p>
+                      )}
+                      {cs.url && (
+                        <a
+                          href={cs.url}
+                          target="_blank"
+                          rel="noopener noreferrer nofollow"
+                          className="mt-2 inline-block text-sm font-medium text-blue-600 hover:underline"
+                        >
+                          View project →
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {details.length > 0 && (
               <section>
@@ -156,6 +209,25 @@ export default async function CompanyPage({
                     </div>
                   ))}
                 </dl>
+              </section>
+            )}
+
+            {socials.length > 0 && (
+              <section>
+                <h2 className="text-lg font-semibold text-slate-900">Connect</h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {socials.map((s) => (
+                    <a
+                      key={s.label}
+                      href={s.url!}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      className="rounded-lg border border-slate-200 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-400 hover:text-blue-600"
+                    >
+                      {s.label}
+                    </a>
+                  ))}
+                </div>
               </section>
             )}
           </div>
