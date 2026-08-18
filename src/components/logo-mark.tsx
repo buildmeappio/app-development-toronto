@@ -1,6 +1,7 @@
-/** The brand mark — a gradient app tile with a code glyph. Matches the favicon. */
+/** The brand mark — a "leaderboard": stacked rows with the top (featured) row
+ * lit. Bare version for the on-page logo; the favicon adds a chip. */
 export function LogoMark({
-  size = 36,
+  size = 34,
   className = "",
 }: {
   size?: number;
@@ -16,31 +17,10 @@ export function LogoMark({
       className={className}
       aria-hidden
     >
-      <defs>
-        <linearGradient
-          id="logoMarkGradient"
-          x1="0"
-          y1="0"
-          x2="32"
-          y2="32"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#2563EB" />
-          <stop offset="1" stopColor="#4F46E5" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="8" fill="url(#logoMarkGradient)" />
-      <g
-        stroke="#fff"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      >
-        <polyline points="12,11 8,16 12,21" />
-        <polyline points="20,11 24,16 20,21" />
-        <line x1="18" y1="9.5" x2="14" y2="22.5" />
-      </g>
+      {/* top row = the featured/#1 listing */}
+      <rect x="6" y="7" width="20" height="5" rx="2.5" fill="#F59E0B" />
+      <rect x="6" y="14" width="14" height="5" rx="2.5" fill="#2563EB" />
+      <rect x="6" y="21" width="14" height="5" rx="2.5" fill="#2563EB" />
     </svg>
   );
 }
