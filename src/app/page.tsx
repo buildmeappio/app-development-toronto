@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Container } from "@/components/container";
 import { CompanyCard } from "@/components/company-card";
 import { JsonLd } from "@/components/json-ld";
+import { SearchForm } from "@/components/search-form";
 import { websiteJsonLd, organizationJsonLd } from "@/lib/jsonld";
 import {
   getRegionsWithCounts,
@@ -80,7 +81,10 @@ function Hero({ stats }: { stats: { companies: number; cities: number; regions: 
             companies across Toronto, Peel, York, Halton, and Durham — so you can
             shortlist the right partner with confidence.
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-8 flex justify-center">
+            <SearchForm variant="onDark" />
+          </div>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="#regions"
               className="rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"

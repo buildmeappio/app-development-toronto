@@ -17,6 +17,8 @@ import {
 } from "@/lib/queries/placements";
 import { JsonLd } from "@/components/json-ld";
 import { breadcrumbJsonLd, itemListJsonLd } from "@/lib/jsonld";
+import { FOCUS_AREAS } from "@/db/schema";
+import { focusLabelFromSlug, focusToSlug } from "@/lib/focus";
 
 // Cache location pages; refresh daily (monthly cron changes them at most once/mo).
 export const revalidate = 86400;
@@ -35,9 +37,11 @@ function parseSlug(slug: string[]): {
   fullSlug: string;
   period: string;
   page: number;
+  focus: string | null;
 } {
   let segs = [...slug];
   let page = 1;
+  let focus: string | null = null;
 
   // Trailing "page/N"
   if (
@@ -49,6 +53,16 @@ function parseSlug(slug: string[]): {
     segs = segs.slice(0, -2);
   }
 
+  // Trailing "for/{focus-slug}" — only strip if it's a known focus, else leave
+  // it so the location lookup fails and the page 404s.
+  if (segs.length >= 2 && segs[segs.length - 2] === "for") {
+    const label = focusLabelFromSlug(segs[segs.length - 1]);
+    if (label) {
+      focus = label;
+      segs = segs.slice(0, -2);
+    }
+  }
+
   // Trailing "YYYY/MM"
   const last2 = segs.slice(-2);
   const isMonthly =
@@ -58,15 +72,22 @@ function parseSlug(slug: string[]): {
       fullSlug: segs.slice(0, -2).join("/"),
       period: `${last2[0]}-${last2[1]}`,
       page,
+      focus,
     };
   }
-  return { fullSlug: segs.join("/"), period: "all-time", page };
+  return { fullSlug: segs.join("/"), period: "all-time", page, focus };
 }
 
-function pagePath(fullSlug: string, period: string, page: number): string {
+function pagePath(
+  fullSlug: string,
+  period: string,
+  page: number,
+  focus?: string | null,
+): string {
   const periodPart = period === "all-time" ? "" : `/${period.replace("-", "/")}`;
+  const focusPart = focus ? `/for/${focusToSlug(focus)}` : "";
   const pagePart = page > 1 ? `/page/${page}` : "";
-  return `/app-development-companies/${fullSlug}${periodPart}${pagePart}`;
+  return `/app-development-companies/${fullSlug}${periodPart}${focusPart}${pagePart}`;
 }
 
 export async function generateMetadata({
@@ -75,17 +96,18 @@ export async function generateMetadata({
   params: Promise<{ slug: string[] }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const { fullSlug, period, page } = parseSlug(slug);
+  const { fullSlug, period, page, focus } = parseSlug(slug);
   const location = await getLocationByFullSlug(fullSlug).catch(() => null);
   if (!location) return { title: "Not found" };
 
+  const subject = focus ? `${focus} Companies` : "App Development Companies";
   const periodLabel = period === "all-time" ? "" : ` — ${period}`;
   const pageLabel = page > 1 ? ` — Page ${page}` : "";
-  const title = `Top App Development Companies in ${location.name}${periodLabel}${pageLabel}`;
+  const title = `Top ${subject} in ${location.name}${periodLabel}${pageLabel}`;
   return {
     title,
-    description: `Ranked list of the best app development companies in ${location.name}, GTA. Curated and updated monthly.`,
-    alternates: { canonical: pagePath(fullSlug, period, page) },
+    description: `Ranked list of the best ${focus ? `${focus.toLowerCase()} ` : "app development "}companies in ${location.name}, GTA. Curated and updated monthly.`,
+    alternates: { canonical: pagePath(fullSlug, period, page, focus) },
     // Dated monthly snapshots are archives — keep them out of the index (thin
     // duplicates of the canonical all-time page until monthly data diverges).
     ...(period !== "all-time" ? { robots: { index: false, follow: true } } : {}),
@@ -117,7 +139,7 @@ export default async function LocationPage({
   params: Promise<{ slug: string[] }>;
 }) {
   const { slug } = await params;
-  const { fullSlug, period, page } = parseSlug(slug);
+  const { fullSlug, period, page, focus } = parseSlug(slug);
 
   const location = await getLocationByFullSlug(fullSlug).catch(() => null);
   if (!location) notFound();
@@ -131,24 +153,36 @@ export default async function LocationPage({
   ]);
 
   const isMonthly = period !== "all-time";
-  const featuredIds = new Set(featuredAll.map((f) => f.company.id));
-  // Featured firms are pinned above; drop them from the organic list to avoid
-  // showing them twice, then renumber the organic ranks for display.
-  const organicAll = ranking.filter((r) => !featuredIds.has(r.company.id));
+  const matchesFocus = (fa: string[] | null) => !focus || (fa ?? []).includes(focus);
+
+  // Featured pins (filtered to the active focus), then organic minus featured.
+  const featuredMatched = featuredAll.filter((f) => matchesFocus(f.company.focusAreas));
+  const featuredIds = new Set(featuredMatched.map((f) => f.company.id));
+  const organicAll = ranking.filter(
+    (r) => !featuredIds.has(r.company.id) && matchesFocus(r.company.focusAreas),
+  );
+
+  // A focus page with no matches shouldn't exist.
+  if (focus && organicAll.length === 0 && featuredMatched.length === 0) notFound();
 
   // Pagination — featured pins only on page 1.
   const totalPages = Math.max(1, Math.ceil(organicAll.length / PER_PAGE));
   if (page > totalPages && page > 1) notFound();
-  const featured = page === 1 ? featuredAll : [];
+  const featured = page === 1 ? featuredMatched : [];
   const start = (page - 1) * PER_PAGE;
   const organic = organicAll.slice(start, start + PER_PAGE);
+
+  // Focus areas present among this location's companies (for the filter chips).
+  const availableFocus = new Set<string>();
+  for (const r of ranking) for (const fa of r.company.focusAreas ?? []) availableFocus.add(fa);
+  const focusChips = FOCUS_AREAS.filter((f) => availableFocus.has(f));
 
   return (
     <main className="pb-4">
       <JsonLd
         data={[
           breadcrumbJsonLd(crumbs.map((c) => ({ name: c.label, url: c.href }))),
-          ...(page === 1 && ranking.length > 0
+          ...(page === 1 && !focus && ranking.length > 0
             ? [
                 itemListJsonLd(
                   `Top App Development Companies in ${location.name}`,
@@ -169,11 +203,12 @@ export default async function LocationPage({
           <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-                Top App Development Companies in {location.name}
+                Top {focus ? `${focus} Companies` : "App Development Companies"}{" "}
+                in {location.name}
               </h1>
               <p className="mt-2 text-slate-500">
-                {ranking.length > 0
-                  ? `${ranking.length} companies ranked`
+                {organicAll.length + featuredMatched.length > 0
+                  ? `${organicAll.length + featuredMatched.length} companies`
                   : "Ranking coming soon"}
                 {isMonthly ? ` · ${period} snapshot` : " · Updated monthly"}
               </p>
@@ -203,6 +238,35 @@ export default async function LocationPage({
                     {c.name}
                   </Link>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {(focusChips.length > 0 || focus) && (
+            <div className="mt-6">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Filter by focus
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {focus && (
+                  <Link
+                    href={pagePath(fullSlug, period, 1)}
+                    className="rounded-full bg-slate-900 px-3.5 py-1.5 text-sm font-medium text-white"
+                  >
+                    ✕ {focus}
+                  </Link>
+                )}
+                {focusChips
+                  .filter((f) => f !== focus)
+                  .map((f) => (
+                    <Link
+                      key={f}
+                      href={pagePath(fullSlug, period, 1, f)}
+                      className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm text-slate-700 transition hover:border-blue-400 hover:text-blue-600"
+                    >
+                      {f}
+                    </Link>
+                  ))}
               </div>
             </div>
           )}
@@ -254,7 +318,7 @@ export default async function LocationPage({
               <nav className="flex items-center justify-between border-t border-slate-200 pt-6">
                 {page > 1 ? (
                   <Link
-                    href={pagePath(fullSlug, period, page - 1)}
+                    href={pagePath(fullSlug, period, page - 1, focus)}
                     className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-400 hover:text-blue-600"
                   >
                     ← Previous
@@ -267,7 +331,7 @@ export default async function LocationPage({
                 </span>
                 {page < totalPages ? (
                   <Link
-                    href={pagePath(fullSlug, period, page + 1)}
+                    href={pagePath(fullSlug, period, page + 1, focus)}
                     className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-400 hover:text-blue-600"
                   >
                     Next →

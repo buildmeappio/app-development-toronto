@@ -8,6 +8,7 @@ import { StarRating } from "@/components/star-rating";
 import { Badge } from "@/components/badge";
 import { getCompanyBySlug, getCaseStudies } from "@/lib/queries/locations";
 import { getActiveBadgeCompanyIds } from "@/lib/queries/placements";
+import { getPublishedReviews, getReviewAggregate } from "@/lib/queries/reviews";
 import { JsonLd } from "@/components/json-ld";
 import { breadcrumbJsonLd, companyJsonLd } from "@/lib/jsonld";
 
@@ -45,9 +46,11 @@ export default async function CompanyPage({
 
   const { company, hqLocationName, hqFullSlug } = row;
   const claimed = company.claimStatus === "claimed";
-  const [badgeIds, studies] = await Promise.all([
+  const [badgeIds, studies, companyReviews, reviewAgg] = await Promise.all([
     getActiveBadgeCompanyIds().catch(() => new Set<string>()),
     getCaseStudies(company.id).catch(() => []),
+    getPublishedReviews(company.id).catch(() => []),
+    getReviewAggregate(company.id).catch(() => ({ count: 0, avg: 0 })),
   ]);
   const verified = badgeIds.has(company.id);
   const focusAreas = company.focusAreas ?? [];
@@ -80,6 +83,8 @@ export default async function CompanyPage({
           companyJsonLd({
             name: company.name,
             slug: company.slug,
+            reviewCount: reviewAgg.count,
+            reviewAvg: reviewAgg.avg,
             website: company.website,
             description: company.description,
             addressText: company.addressText,
@@ -193,6 +198,62 @@ export default async function CompanyPage({
                 </div>
               </section>
             )}
+
+            <section id="reviews">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Reviews
+                  {reviewAgg.count > 0 && (
+                    <span className="ml-2 text-sm font-normal text-slate-500">
+                      {reviewAgg.avg.toFixed(1)}★ · {reviewAgg.count}
+                    </span>
+                  )}
+                </h2>
+                <Link
+                  href={`/company/${company.slug}/review`}
+                  className="rounded-lg border border-slate-300 px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-400 hover:text-blue-600"
+                >
+                  Write a review
+                </Link>
+              </div>
+
+              {companyReviews.length === 0 ? (
+                <p className="mt-3 rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+                  No reviews yet. Worked with {company.name}?{" "}
+                  <Link href={`/company/${company.slug}/review`} className="font-medium text-blue-600 hover:underline">
+                    Be the first to review.
+                  </Link>
+                </p>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  {companyReviews.map((r) => (
+                    <div key={r.id} className="rounded-2xl border border-slate-200 p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm font-semibold text-amber-500">
+                          {"★".repeat(r.rating)}
+                          <span className="text-slate-200">
+                            {"★".repeat(5 - r.rating)}
+                          </span>
+                        </div>
+                        {r.verified && (
+                          <Badge variant="verified">✓ Verified</Badge>
+                        )}
+                      </div>
+                      {r.title && (
+                        <h3 className="mt-2 font-semibold text-slate-900">{r.title}</h3>
+                      )}
+                      <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{r.body}</p>
+                      <p className="mt-3 text-xs text-slate-400">
+                        {r.reviewerName}
+                        {r.reviewerRole ? `, ${r.reviewerRole}` : ""}
+                        {r.reviewerCompany ? ` · ${r.reviewerCompany}` : ""}
+                        {r.projectType ? ` · ${r.projectType}` : ""}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
 
             {details.length > 0 && (
               <section>

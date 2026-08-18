@@ -416,6 +416,48 @@ export const caseStudiesRelations = relations(caseStudies, ({ one }) => ({
 // The free case-study cap; Verified unlocks unlimited.
 export const FREE_CASE_STUDY_LIMIT = 3;
 
+/* ---------------------------------------------------------------------------
+ * Reviews — first-party, moderated client reviews (the Clutch trust moat).
+ * Submitted publicly, held as "pending" until an admin publishes them.
+ * ------------------------------------------------------------------------- */
+
+export const reviewStatusEnum = pgEnum("review_status", [
+  "pending",
+  "published",
+  "rejected",
+]);
+
+export const reviews = pgTable(
+  "reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    reviewerName: text("reviewer_name").notNull(),
+    reviewerRole: text("reviewer_role"), // e.g. "CTO"
+    reviewerCompany: text("reviewer_company"), // reviewer's own company
+    rating: integer("rating").notNull(), // 1..5
+    title: text("title"),
+    body: text("body").notNull(),
+    projectType: text("project_type"), // e.g. "Mobile App Development"
+    status: reviewStatusEnum("status").notNull().default("pending"),
+    verified: boolean("verified").notNull().default(false),
+    ipHash: text("ip_hash"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("reviews_company_status_idx").on(t.companyId, t.status)],
+);
+
+export const reviewsRelations = relations(reviews, ({ one }) => ({
+  company: one(companies, {
+    fields: [reviews.companyId],
+    references: [companies.id],
+  }),
+}));
+
 // Fixed taxonomy of service focus areas reps can tag (also powers filtering).
 export const FOCUS_AREAS = [
   "iOS apps",

@@ -67,6 +67,9 @@ export function companyJsonLd(company: {
   description?: string | null;
   addressText?: string | null;
   hqLocationName?: string | null;
+  // First-party review aggregate (our own reviews — safe to mark up).
+  reviewCount?: number;
+  reviewAvg?: number;
 }) {
   return {
     "@context": "https://schema.org",
@@ -85,8 +88,17 @@ export function companyJsonLd(company: {
           },
         }
       : {}),
-    ...(company.hqLocationName
-      ? { areaServed: company.hqLocationName }
+    ...(company.hqLocationName ? { areaServed: company.hqLocationName } : {}),
+    ...(company.reviewCount && company.reviewCount > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: Number((company.reviewAvg ?? 0).toFixed(1)),
+            reviewCount: company.reviewCount,
+            bestRating: 5,
+            worstRating: 1,
+          },
+        }
       : {}),
   };
 }

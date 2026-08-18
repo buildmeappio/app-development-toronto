@@ -7,6 +7,7 @@ import {
 } from "../db/schema";
 import { inArray, eq } from "drizzle-orm";
 import { computeScore } from "./ranking";
+import { getAllReviewAggregates } from "./queries/reviews";
 
 /** Current month as "YYYY-MM". */
 export function periodForDate(now: Date): string {
@@ -29,6 +30,7 @@ export async function generateRankings(now: Date = new Date()) {
     .from(companies)
     .where(eq(companies.isPublished, true));
   const links = await db.select().from(companyLocations);
+  const reviewAgg = await getAllReviewAggregates();
 
   const companyById = new Map(allCompanies.map((c) => [c.id, c]));
 
@@ -78,9 +80,12 @@ export async function generateRankings(now: Date = new Date()) {
     const scored = [...bestWeight.entries()]
       .map(([companyId, weight]) => {
         const c = companyById.get(companyId)!;
+        const fp = reviewAgg.get(companyId);
         const score = computeScore({
           googleRating: c.googleRating,
           googleRatingCount: c.googleRatingCount,
+          firstPartyRating: fp?.avg ?? null,
+          firstPartyCount: fp?.count ?? null,
           foundedYear: c.foundedYear,
           teamSize: c.teamSize,
           hasDescription: !!c.description,

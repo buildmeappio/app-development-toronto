@@ -10,6 +10,9 @@
 export type RankingInput = {
   googleRating: number | null; // 0..5
   googleRatingCount: number | null;
+  // First-party (our own, verified) reviews — weighted higher than Google's.
+  firstPartyRating?: number | null;
+  firstPartyCount?: number | null;
   foundedYear: number | null;
   teamSize: string | null;
   hasDescription: boolean;
@@ -22,18 +25,36 @@ export type RankingInput = {
 };
 
 export const RANKING_WEIGHTS = {
-  reviewQuality: 45, // Google rating × volume — the dominant trust signal
+  reviewQuality: 45, // review rating × volume — the dominant trust signal
   profileCompleteness: 25, // rewards claimed, filled-out profiles
   tenure: 20, // years in business
   claimedBonus: 10, // small nudge; claimed profiles are more trustworthy
 } as const;
 
-/** Rating (0..5) scaled by log-volume, normalized to 0..1. */
-function reviewQualityScore(rating: number | null, count: number | null): number {
-  if (!rating || !count || count <= 0) return 0;
-  // log10 volume caps around 1000 reviews (log10(1000)=3 → /3 = 1.0).
-  const volumeFactor = Math.min(Math.log10(count + 1) / 3, 1);
-  return (rating / 5) * volumeFactor;
+// First-party reviews count double in volume — they're ours and verified, so
+// collecting them is the strongest lever a company has to climb the rankings.
+const FIRST_PARTY_WEIGHT = 2;
+
+/**
+ * Blended review quality (0..1) combining Google and first-party reviews.
+ * First-party reviews are weighted more heavily in both the average and volume.
+ */
+function reviewQualityScore(
+  googleRating: number | null,
+  googleCount: number | null,
+  fpRating: number | null | undefined,
+  fpCount: number | null | undefined,
+): number {
+  const gR = googleRating ?? 0;
+  const gC = googleCount ?? 0;
+  const fR = fpRating ?? 0;
+  const fC = fpCount ?? 0;
+  const weightedCount = gC + fC * FIRST_PARTY_WEIGHT;
+  if (weightedCount <= 0) return 0;
+  const blendedRating =
+    (gR * gC + fR * fC * FIRST_PARTY_WEIGHT) / weightedCount;
+  const volumeFactor = Math.min(Math.log10(weightedCount + 1) / 3, 1);
+  return (blendedRating / 5) * volumeFactor;
 }
 
 /** Fraction of key profile fields present, 0..1. */
@@ -58,7 +79,12 @@ function tenureScore(foundedYear: number | null, currentYear: number): number {
 export function computeScore(input: RankingInput): number {
   const raw =
     RANKING_WEIGHTS.reviewQuality *
-      reviewQualityScore(input.googleRating, input.googleRatingCount) +
+      reviewQualityScore(
+        input.googleRating,
+        input.googleRatingCount,
+        input.firstPartyRating,
+        input.firstPartyCount,
+      ) +
     RANKING_WEIGHTS.profileCompleteness * completenessScore(input) +
     RANKING_WEIGHTS.tenure * tenureScore(input.foundedYear, input.currentYear) +
     RANKING_WEIGHTS.claimedBonus * (input.isClaimed ? 1 : 0);

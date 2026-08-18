@@ -21,7 +21,9 @@
     "admin:claims": "tsx --env-file=.env.local src/db/list-claims.ts",
     "admin:approve": "tsx --env-file=.env.local src/db/approve-claim.ts",
     "admin:merge": "tsx --env-file=.env.local src/db/merge-duplicates.ts",
-    "admin:reslug": "tsx --env-file=.env.local src/db/reslug.ts"
+    "admin:reslug": "tsx --env-file=.env.local src/db/reslug.ts",
+    "admin:reviews": "tsx --env-file=.env.local src/db/list-reviews.ts",
+    "admin:publish-review": "tsx --env-file=.env.local src/db/publish-review.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

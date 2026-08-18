@@ -6,7 +6,13 @@ import {
   caseStudies,
 } from "@/db/schema";
 import { alias } from "drizzle-orm/pg-core";
-import { eq, and, asc, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, asc, desc, sql, inArray, ilike } from "drizzle-orm";
+
+// Escape LIKE wildcards in user input (drizzle parameterizes, but % and _ are
+// still treated as wildcards otherwise).
+function escapeLike(q: string) {
+  return q.replace(/[%_\\]/g, "\\$&");
+}
 
 /** Portfolio / case studies for a company, newest first. */
 export async function getCaseStudies(companyId: string) {
@@ -148,6 +154,29 @@ export async function getCompanyBySlug(slug: string) {
     .where(eq(companies.slug, slug))
     .limit(1);
   return row ?? null;
+}
+
+/** Search published companies by name. */
+export async function searchCompanies(q: string, limit = 24) {
+  const term = `%${escapeLike(q.trim())}%`;
+  return db
+    .select({ company: companies, hqLocationName: primaryLoc.name })
+    .from(companies)
+    .leftJoin(primaryLoc, eq(companies.primaryLocationId, primaryLoc.id))
+    .where(and(eq(companies.isPublished, true), ilike(companies.name, term)))
+    .orderBy(desc(sql`coalesce(${companies.googleRatingCount}, 0)`))
+    .limit(limit);
+}
+
+/** Search locations by name (for jump-to-city results). */
+export async function searchLocations(q: string, limit = 8) {
+  const term = `%${escapeLike(q.trim())}%`;
+  return db
+    .select()
+    .from(locations)
+    .where(ilike(locations.name, term))
+    .orderBy(asc(locations.name))
+    .limit(limit);
 }
 
 /** All location full-slugs — for the sitemap and static params. */
