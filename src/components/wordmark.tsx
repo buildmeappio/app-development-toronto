@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { Baloo_2 } from "next/font/google";
 import { LogoMark } from "./logo-mark";
 
-/** The brand wordmark — the single source of truth for brand presentation.
- * Leaderboard mark + "tad." monogram over the full name (W3). */
+// Rounded, chunky display face for the logo only (self-hosted, no CDN).
+const brand = Baloo_2({ subsets: ["latin"], weight: ["800"] });
+
+/** The brand wordmark — M4 leaderboard mark + two-line "toronto app dev." */
 export function Wordmark({
   size = "md",
   href = "/",
@@ -10,20 +13,17 @@ export function Wordmark({
   size?: "sm" | "md";
   href?: string | null;
 }) {
-  const mono = size === "sm" ? "text-sm" : "text-lg";
-  const sub = size === "sm" ? "text-[7px]" : "text-[8px]";
+  const line = size === "sm" ? "text-sm" : "text-xl";
 
   const inner = (
     <span className="flex items-center gap-2.5">
-      <LogoMark size={size === "sm" ? 28 : 34} className="shrink-0" />
-      <span className="flex flex-col justify-center leading-none">
-        <span className={`font-extrabold tracking-tight text-slate-900 ${mono}`}>
-          tad<span className="text-amber-500">.</span>
-        </span>
-        <span
-          className={`mt-1 font-semibold uppercase tracking-[0.16em] text-slate-400 ${sub}`}
-        >
-          Toronto App Developers
+      <LogoMark size={size === "sm" ? 34 : 44} className="shrink-0" />
+      <span className={`${brand.className} flex flex-col leading-[0.86] ${line}`}>
+        <span className="text-[#0b1b3a]">toronto</span>
+        <span>
+          <span className="text-[#0b1b3a]">app </span>
+          <span className="text-blue-600">dev</span>
+          <span className="text-amber-500">.</span>
         </span>
       </span>
     </span>
