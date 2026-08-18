@@ -13,7 +13,7 @@ export function Wordmark({
   const line = size === "sm" ? "text-sm" : "text-xl";
 
   const inner = (
-    <span className="flex items-center gap-2.5">
+    <span className="flex items-center gap-1">
       <LogoMark size={size === "sm" ? 34 : 44} className="shrink-0" />
       <span
         className={`flex flex-col font-extrabold leading-[0.9] tracking-tight ${line}`}

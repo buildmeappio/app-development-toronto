@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 170" fill="none" role="img" aria-label="Toronto App Dev">
+  <!-- Leaderboard mark -->
+  <g transform="translate(18,40) scale(3.6)">
+    <rect x="6" y="7" width="20" height="5" rx="2.5" fill="#F59E0B"/>
+    <rect x="6" y="14" width="14" height="5" rx="2.5" fill="#2563EB"/>
+    <rect x="6" y="21" width="14" height="5" rx="2.5" fill="#2563EB"/>
+  </g>
+  <!-- Wordmark -->
+  <g font-family="'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="52" letter-spacing="-2">
+    <text x="128" y="90" fill="#0B1B3A">toronto</text>
+    <text x="128" y="140">
+      <tspan fill="#0B1B3A">app </tspan><tspan fill="#2563EB">dev</tspan><tspan fill="#F59E0B">.</tspan>
+    </text>
+  </g>
+</svg>
