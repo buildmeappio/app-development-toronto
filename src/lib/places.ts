@@ -96,3 +96,34 @@ export async function placeDetails(placeId: string): Promise<PlaceResult | null>
   }
   return res.json();
 }
+
+export type GoogleReview = {
+  name?: string;
+  rating?: number;
+  text?: { text?: string };
+  originalText?: { text?: string };
+  authorAttribution?: { displayName?: string };
+  publishTime?: string;
+};
+
+/** Fetch a place's Google reviews (up to 5) via the official Places API. */
+export async function getPlaceReviews(placeId: string): Promise<GoogleReview[]> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) throw new Error("GOOGLE_PLACES_API_KEY is not set");
+
+  const res = await fetch(
+    `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`,
+    {
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "reviews",
+      },
+    },
+  );
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Place reviews ${res.status}: ${text.slice(0, 200)}`);
+  }
+  const data = (await res.json()) as { reviews?: GoogleReview[] };
+  return data.reviews ?? [];
+}

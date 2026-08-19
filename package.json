@@ -23,7 +23,9 @@
     "admin:merge": "tsx --env-file=.env.local src/db/merge-duplicates.ts",
     "admin:reslug": "tsx --env-file=.env.local src/db/reslug.ts",
     "admin:reviews": "tsx --env-file=.env.local src/db/list-reviews.ts",
-    "admin:publish-review": "tsx --env-file=.env.local src/db/publish-review.ts"
+    "admin:publish-review": "tsx --env-file=.env.local src/db/publish-review.ts",
+    "admin:setup-import": "tsx --env-file=.env.local src/db/setup-import.ts",
+    "admin:run-import": "tsx --env-file=.env.local src/db/run-import.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

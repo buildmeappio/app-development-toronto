@@ -443,6 +443,11 @@ export const reviews = pgTable(
     projectType: text("project_type"), // e.g. "Mobile App Development"
     status: reviewStatusEnum("status").notNull().default("pending"),
     verified: boolean("verified").notNull().default(false),
+    // Origin: "firstparty" (collected here) or an imported platform.
+    source: text("source").notNull().default("firstparty"),
+    sourceUrl: text("source_url"),
+    externalId: text("external_id"), // for dedupe on re-fetch
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     ipHash: text("ip_hash"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -505,6 +510,47 @@ export const reviewInvitationsRelations = relations(
 
 // Cap invites per company to protect our sending reputation.
 export const MAX_REVIEW_INVITES = 100;
+
+/* ---------------------------------------------------------------------------
+ * Review imports — a paid feature: a company configures ONE external source and
+ * we fetch/refresh their reviews from it (monthly + on-demand from the admin).
+ * ------------------------------------------------------------------------- */
+
+export const reviewSourceEnum = pgEnum("review_source", [
+  "google",
+  "clutch",
+  "goodfirms",
+  "designrush",
+]);
+
+export const importStatusEnum = pgEnum("import_status", ["active", "paused"]);
+
+export const reviewImports = pgTable(
+  "review_imports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    source: reviewSourceEnum("source").notNull(),
+    sourceUrl: text("source_url").notNull(),
+    status: importStatusEnum("status").notNull().default("active"),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    lastCount: integer("last_count"),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [uniqueIndex("review_imports_company_unique").on(t.companyId)],
+);
+
+export const reviewImportsRelations = relations(reviewImports, ({ one }) => ({
+  company: one(companies, {
+    fields: [reviewImports.companyId],
+    references: [companies.id],
+  }),
+}));
 
 // Fixed taxonomy of service focus areas reps can tag (also powers filtering).
 export const FOCUS_AREAS = [

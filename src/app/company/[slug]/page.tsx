@@ -235,9 +235,22 @@ export default async function CompanyPage({
                             {"★".repeat(5 - r.rating)}
                           </span>
                         </div>
-                        {r.verified && (
-                          <Badge variant="verified">✓ Verified</Badge>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {r.source !== "firstparty" && (
+                            <a
+                              href={r.sourceUrl ?? "#"}
+                              target="_blank"
+                              rel="noopener noreferrer nofollow"
+                              className="text-xs font-medium text-slate-400 hover:text-blue-600"
+                            >
+                              via{" "}
+                              {r.source.charAt(0).toUpperCase() + r.source.slice(1)}
+                            </a>
+                          )}
+                          {r.verified && (
+                            <Badge variant="verified">✓ Verified</Badge>
+                          )}
+                        </div>
                       </div>
                       {r.title && (
                         <h3 className="mt-2 font-semibold text-slate-900">{r.title}</h3>
