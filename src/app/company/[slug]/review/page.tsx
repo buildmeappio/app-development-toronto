@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageShell, Panel, Field, inputCls, textareaCls, btn } from "@/components/ui";
 import { getCompanyBySlug } from "@/lib/queries/locations";
+import { getInvitationByToken } from "@/lib/queries/reviews";
 import { submitReviewAction } from "@/app/actions/reviews";
 
 export const metadata = { title: "Write a review", robots: { index: false } };
@@ -11,13 +12,19 @@ export default async function ReviewPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ submitted?: string }>;
+  searchParams: Promise<{ submitted?: string; invite?: string }>;
 }) {
   const { slug } = await params;
-  const { submitted } = await searchParams;
+  const { submitted, invite } = await searchParams;
   const row = await getCompanyBySlug(slug).catch(() => null);
   if (!row) notFound();
   const { company } = row;
+
+  // A valid invitation pre-associates the reviewer with this company.
+  const invitation =
+    invite && (await getInvitationByToken(invite).catch(() => null));
+  const validInvite =
+    invitation && invitation.companyId === company.id ? invitation : null;
 
   if (submitted) {
     return (
@@ -53,9 +60,18 @@ export default async function ReviewPage({
         Share your experience. Reviews are checked before they&apos;re published.
       </p>
 
+      {validInvite && (
+        <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+          {company.name} invited you to review them. Thanks for taking a moment!
+        </div>
+      )}
+
       <Panel className="mt-8 p-8">
         <form action={submitReviewAction} className="space-y-5">
           <input type="hidden" name="companyId" value={company.id} />
+          {validInvite && (
+            <input type="hidden" name="invite" value={validInvite.token} />
+          )}
           <div aria-hidden className="absolute left-[-9999px]" style={{ position: "absolute" }}>
             <label>
               Website
@@ -82,7 +98,7 @@ export default async function ReviewPage({
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <Field label="Your name" required>
-              <input name="reviewerName" required className={inputCls} />
+              <input name="reviewerName" required defaultValue={validInvite?.clientName ?? ""} className={inputCls} />
             </Field>
             <Field label="Your role">
               <input name="reviewerRole" placeholder="e.g. CTO" className={inputCls} />

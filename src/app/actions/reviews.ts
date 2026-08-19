@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { reviews, companies } from "@/db/schema";
+import { reviews, companies, reviewInvitations } from "@/db/schema";
 import { sendEmail } from "@/lib/email";
 
 const MAX_PER_IP_PER_HOUR = 3;
@@ -61,17 +61,34 @@ export async function submitReviewAction(formData: FormData) {
     redirect(done);
   }
 
-  await db.insert(reviews).values({
-    companyId,
-    reviewerName,
-    reviewerRole: val("reviewerRole"),
-    reviewerCompany: val("reviewerCompany"),
-    rating,
-    title: val("title"),
-    body,
-    projectType: val("projectType"),
-    ipHash,
-  });
+  const [inserted] = await db
+    .insert(reviews)
+    .values({
+      companyId,
+      reviewerName,
+      reviewerRole: val("reviewerRole"),
+      reviewerCompany: val("reviewerCompany"),
+      rating,
+      title: val("title"),
+      body,
+      projectType: val("projectType"),
+      ipHash,
+    })
+    .returning({ id: reviews.id });
+
+  // If this came from an invitation, mark it completed and link the review.
+  const inviteToken = val("invite");
+  if (inviteToken) {
+    await db
+      .update(reviewInvitations)
+      .set({ status: "completed", reviewId: inserted.id })
+      .where(
+        and(
+          eq(reviewInvitations.token, inviteToken),
+          eq(reviewInvitations.companyId, companyId),
+        ),
+      );
+  }
 
   const notifyTo = process.env.LEAD_NOTIFY_EMAIL;
   if (notifyTo) {

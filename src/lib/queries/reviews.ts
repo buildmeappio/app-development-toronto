@@ -1,6 +1,39 @@
 import { db } from "@/db";
-import { reviews } from "@/db/schema";
+import { reviews, reviewInvitations } from "@/db/schema";
 import { and, eq, desc, sql } from "drizzle-orm";
+
+/** All review invitations a company has sent, newest first. */
+export async function getInvitationsForCompany(companyId: string) {
+  return db
+    .select()
+    .from(reviewInvitations)
+    .where(eq(reviewInvitations.companyId, companyId))
+    .orderBy(desc(reviewInvitations.createdAt));
+}
+
+/** Look up an invitation by its token. */
+export async function getInvitationByToken(token: string) {
+  const [row] = await db
+    .select()
+    .from(reviewInvitations)
+    .where(eq(reviewInvitations.token, token))
+    .limit(1);
+  return row ?? null;
+}
+
+/** Pending + published review counts for a company (for the owner console). */
+export async function getReviewCountsByStatus(companyId: string) {
+  const rows = await db
+    .select({ status: reviews.status, c: sql<number>`count(*)::int` })
+    .from(reviews)
+    .where(eq(reviews.companyId, companyId))
+    .groupBy(reviews.status);
+  const map = new Map(rows.map((r) => [r.status, r.c]));
+  return {
+    pending: map.get("pending") ?? 0,
+    published: map.get("published") ?? 0,
+  };
+}
 
 /** Published reviews for a company, newest first. */
 export async function getPublishedReviews(companyId: string) {

@@ -188,8 +188,14 @@ export default async function DashboardPage({
                     </Badge>
                   ))}
                   <Link
+                    href={`/company/${c.company.slug}/reviews`}
+                    className="ml-auto text-sm font-medium text-slate-600 hover:text-blue-600"
+                  >
+                    Collect reviews
+                  </Link>
+                  <Link
                     href={`/upgrade?company=${c.company.slug}`}
-                    className="ml-auto text-sm font-medium text-blue-600 hover:underline"
+                    className="text-sm font-medium text-blue-600 hover:underline"
                   >
                     {features.length === 0 ? "Boost visibility" : "Renew / add"} →
                   </Link>

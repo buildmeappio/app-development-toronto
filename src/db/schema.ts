@@ -458,6 +458,54 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   }),
 }));
 
+/* ---------------------------------------------------------------------------
+ * Review invitations — a claimed company invites past clients to review them
+ * (the review-acquisition engine). Each invite has a unique tokenized link.
+ * ------------------------------------------------------------------------- */
+
+export const invitationStatusEnum = pgEnum("invitation_status", [
+  "invited",
+  "completed",
+  "cancelled",
+]);
+
+export const reviewInvitations = pgTable(
+  "review_invitations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    clientName: text("client_name"),
+    clientEmail: text("client_email").notNull(),
+    token: text("token").notNull(),
+    status: invitationStatusEnum("status").notNull().default("invited"),
+    reviewId: uuid("review_id").references(() => reviews.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("review_invitations_token_unique").on(t.token),
+    index("review_invitations_company_idx").on(t.companyId),
+  ],
+);
+
+export const reviewInvitationsRelations = relations(
+  reviewInvitations,
+  ({ one }) => ({
+    company: one(companies, {
+      fields: [reviewInvitations.companyId],
+      references: [companies.id],
+    }),
+  }),
+);
+
+// Cap invites per company to protect our sending reputation.
+export const MAX_REVIEW_INVITES = 100;
+
 // Fixed taxonomy of service focus areas reps can tag (also powers filtering).
 export const FOCUS_AREAS = [
   "iOS apps",
