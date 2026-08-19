@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Container } from "@/components/container";
 import { CompanyLogo } from "@/components/company-logo";
 import { Badge } from "@/components/badge";
+import { PageShell, PageHeading, Panel, StatCard, btn } from "@/components/ui";
 import { getCurrentUser, getUserClaims } from "@/lib/auth";
-import { getActivePlacementsForCompanyIds } from "@/lib/queries/placements";
+import {
+  getActivePlacementsForCompanyIds,
+} from "@/lib/queries/placements";
+import { getCaseStudyCounts } from "@/lib/queries/locations";
+import { getAllReviewAggregates } from "@/lib/queries/reviews";
+import { computeCompleteness } from "@/lib/completeness";
 
 export const metadata = { title: "Dashboard", robots: { index: false } };
 
@@ -20,11 +25,14 @@ export default async function DashboardPage({
   const allClaims = await getUserClaims(user.id).catch(() => []);
   const approved = allClaims.filter((c) => c.status === "approved");
   const inReview = allClaims.filter((c) => c.status === "pending");
+  const ids = approved.map((c) => c.company.id);
 
-  // Group each claimed company's active paid features.
-  const placementRows = await getActivePlacementsForCompanyIds(
-    approved.map((c) => c.company.id),
-  ).catch(() => []);
+  const [placementRows, csCounts, reviewAgg] = await Promise.all([
+    getActivePlacementsForCompanyIds(ids).catch(() => []),
+    getCaseStudyCounts(ids).catch(() => new Map<string, number>()),
+    getAllReviewAggregates().catch(() => new Map()),
+  ]);
+
   const featuresByCompany = new Map<string, typeof placementRows>();
   for (const p of placementRows) {
     const arr = featuresByCompany.get(p.companyId) ?? [];
@@ -32,83 +40,136 @@ export default async function DashboardPage({
     featuresByCompany.set(p.companyId, arr);
   }
   const fmtDate = (d: Date | null) =>
-    d ? d.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }) : "ongoing";
+    d
+      ? d.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })
+      : "ongoing";
+
+  const socialsCount = (c: (typeof approved)[number]["company"]) =>
+    [c.linkedinUrl, c.twitterUrl, c.facebookUrl, c.instagramUrl].filter(Boolean)
+      .length;
+
+  const totalReviews = approved.reduce(
+    (n, c) => n + (reviewAgg.get(c.company.id)?.count ?? 0),
+    0,
+  );
+  const activeFeatures = placementRows.length;
 
   return (
-    <Container className="max-w-3xl py-12">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            Your companies
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Signed in as {user.email}
-          </p>
-        </div>
-        <Link
-          href="/app-development-companies/gta"
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-400 hover:text-blue-600"
-        >
+    <PageShell>
+      <PageHeading
+        eyebrow="Dashboard"
+        title="Your companies"
+        desc={`Signed in as ${user.email}`}
+      >
+        <Link href="/app-development-companies/gta" className={btn("secondary")}>
           Find a company to claim
         </Link>
-      </div>
+      </PageHeading>
 
       {pending && (
-        <p className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          Your claim was submitted and is pending review. We&apos;ll verify it
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Your claim was submitted and is pending review — we&apos;ll verify it
           shortly.
-        </p>
+        </div>
+      )}
+
+      {(approved.length > 0 || inReview.length > 0) && (
+        <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <StatCard label="Claimed" value={approved.length} />
+          <StatCard label="Reviews" value={totalReviews} hint="published" />
+          <StatCard label="Active features" value={activeFeatures} />
+          <StatCard label="Pending" value={inReview.length} />
+        </div>
       )}
 
       {approved.length === 0 && inReview.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-slate-300 p-10 text-center">
-          <p className="text-slate-600">You haven&apos;t claimed any companies yet.</p>
+        <Panel className="p-10 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-2xl">
+            🔎
+          </div>
+          <h2 className="mt-4 text-lg font-semibold text-slate-900">
+            You haven&apos;t claimed any companies yet
+          </h2>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">
+            Find your company in the directory and claim it for free to manage
+            your listing.
+          </p>
           <Link
             href="/app-development-companies/gta"
-            className="mt-4 inline-block rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+            className={btn("primary", "mt-5")}
           >
             Browse the directory
           </Link>
-        </div>
+        </Panel>
       ) : (
-        <div className="mt-8 space-y-3">
+        <div className="space-y-4">
           {approved.map((c) => {
             const features = featuresByCompany.get(c.company.id) ?? [];
             const badge = features.find((f) => f.type === "badge");
             const featuredIn = features.filter((f) => f.type === "featured");
+            const comp = computeCompleteness(c.company, {
+              caseStudies: csCounts.get(c.company.id) ?? 0,
+              socials: socialsCount(c.company),
+            });
             return (
-              <div
-                key={c.claimId}
-                className="rounded-2xl border border-slate-200 bg-white p-4"
-              >
-                <div className="flex items-center gap-4">
-                  <CompanyLogo name={c.company.name} logoUrl={c.company.logoUrl} size={48} />
+              <Panel key={c.claimId} className="p-5">
+                <div className="flex items-start gap-4">
+                  <CompanyLogo
+                    name={c.company.name}
+                    logoUrl={c.company.logoUrl}
+                    size={52}
+                  />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate font-semibold text-slate-900">
                         {c.company.name}
                       </p>
                       {badge && <Badge variant="verified">✓ Verified</Badge>}
                     </div>
                     <p className="text-sm text-slate-500">{c.company.domain}</p>
+
+                    {/* completeness */}
+                    <div className="mt-3 max-w-md">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-slate-500">
+                          Profile {comp.percent}% complete
+                        </span>
+                        {comp.percent < 100 && (
+                          <Link
+                            href={`/company/${c.company.slug}/edit`}
+                            className="font-medium text-blue-600 hover:underline"
+                          >
+                            Complete it →
+                          </Link>
+                        )}
+                      </div>
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className={`h-full rounded-full ${comp.percent === 100 ? "bg-emerald-500" : "bg-blue-600"}`}
+                          style={{ width: `${comp.percent}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
+
+                  <div className="flex shrink-0 items-center gap-2">
                     <Link
                       href={`/company/${c.company.slug}`}
-                      className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-blue-600"
+                      className={btn("ghost", "!px-3 !py-1.5")}
                     >
                       View
                     </Link>
                     <Link
                       href={`/company/${c.company.slug}/edit`}
-                      className="rounded-lg bg-slate-900 px-3.5 py-1.5 text-sm font-semibold text-white transition hover:bg-slate-700"
+                      className={btn("dark", "!px-3.5 !py-1.5")}
                     >
                       Edit
                     </Link>
                   </div>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                {/* features row */}
+                <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
                   <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                     Features
                   </span>
@@ -133,16 +194,13 @@ export default async function DashboardPage({
                     {features.length === 0 ? "Boost visibility" : "Renew / add"} →
                   </Link>
                 </div>
-              </div>
+              </Panel>
             );
           })}
 
           {inReview.map((c) => (
-            <div
-              key={c.claimId}
-              className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"
-            >
-              <CompanyLogo name={c.company.name} logoUrl={c.company.logoUrl} size={48} />
+            <Panel key={c.claimId} className="flex items-center gap-4 p-5">
+              <CompanyLogo name={c.company.name} logoUrl={c.company.logoUrl} size={44} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold text-slate-900">
                   {c.company.name}
@@ -150,10 +208,10 @@ export default async function DashboardPage({
                 <p className="text-sm text-slate-500">{c.company.domain}</p>
               </div>
               <Badge variant="sponsored">Pending review</Badge>
-            </div>
+            </Panel>
           ))}
         </div>
       )}
-    </Container>
+    </PageShell>
   );
 }

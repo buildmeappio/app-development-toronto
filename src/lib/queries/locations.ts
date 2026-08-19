@@ -179,6 +179,17 @@ export async function searchLocations(q: string, limit = 8) {
     .limit(limit);
 }
 
+/** Case-study counts keyed by company id (for completeness + dashboard). */
+export async function getCaseStudyCounts(ids: string[]) {
+  if (ids.length === 0) return new Map<string, number>();
+  const rows = await db
+    .select({ id: caseStudies.companyId, c: sql<number>`count(*)::int` })
+    .from(caseStudies)
+    .where(inArray(caseStudies.companyId, ids))
+    .groupBy(caseStudies.companyId);
+  return new Map(rows.map((r) => [r.id, r.c]));
+}
+
 /** All location full-slugs — for the sitemap and static params. */
 export async function getAllLocationFullSlugs() {
   return db.select({ fullSlug: locations.fullSlug }).from(locations);

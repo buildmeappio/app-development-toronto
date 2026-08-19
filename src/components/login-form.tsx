@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { inputCls, btn } from "@/components/ui";
 
 export function LoginForm({ next }: { next: string }) {
   const [email, setEmail] = useState("");
@@ -55,7 +56,7 @@ export function LoginForm({ next }: { next: string }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@yourcompany.com"
-          className="mt-1.5 w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className={`mt-1.5 ${inputCls}`}
         />
         <p className="mt-1.5 text-xs text-slate-500">
           Use your company email so we can verify your claim automatically.
@@ -64,7 +65,7 @@ export function LoginForm({ next }: { next: string }) {
       <button
         type="submit"
         disabled={status === "sending"}
-        className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+        className={btn("primary", "w-full")}
       >
         {status === "sending" ? "Sending…" : "Email me a sign-in link"}
       </button>

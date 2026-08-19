@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { Container } from "@/components/container";
+import { PageShell, Panel, Field, inputCls, textareaCls, btn } from "@/components/ui";
 import { getCompanyBySlug } from "@/lib/queries/locations";
 import { submitInquiryAction } from "@/app/actions/inquiries";
 
 export const metadata = {
   title: "Boost your visibility",
   description:
-    "Get featured and verified on Toronto App Developers. Request a call to get started.",
+    "Get featured and verified on Toronto App Dev. Request a call to get started.",
 };
 
 export default async function UpgradePage({
@@ -22,31 +22,30 @@ export default async function UpgradePage({
 
   if (sent) {
     return (
-      <Container className="max-w-xl py-20 text-center">
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-10">
-          <div className="text-4xl">✓</div>
+      <PageShell width="narrow">
+        <Panel className="p-10 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-2xl text-emerald-600">
+            ✓
+          </div>
           <h1 className="mt-4 text-2xl font-bold text-slate-900">
             Thanks — we&apos;ll be in touch
           </h1>
-          <p className="mt-2 text-slate-600">
+          <p className="mx-auto mt-2 max-w-sm text-slate-600">
             We&apos;ve received your request and will reach out shortly to set up
             your features and arrange payment.
           </p>
-          <Link
-            href="/"
-            className="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
-          >
+          <Link href="/" className={btn("primary", "mt-6")}>
             Back to home
           </Link>
-        </div>
-      </Container>
+        </Panel>
+      </PageShell>
     );
   }
 
   return (
-    <Container className="max-w-2xl py-14">
+    <PageShell width="narrow">
       <div className="mx-auto max-w-lg text-center">
-        <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
+        <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
           Grow your visibility
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
@@ -54,99 +53,62 @@ export default async function UpgradePage({
         </h1>
         <p className="mt-3 text-slate-500">
           Featured placement and verified badges are set up personally by our
-          team. Tell us what you&apos;re after and we&apos;ll get you live —
-          {company ? ` for ${company.name}.` : " no online payment needed."}
+          team.{" "}
+          {company ? `Tell us what you're after for ${company.name}.` : "No online payment needed."}
         </p>
       </div>
 
-      <form
-        action={submitInquiryAction}
-        className="mx-auto mt-8 max-w-lg space-y-5 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
-      >
-        {company && <input type="hidden" name="companyId" value={company.id} />}
-
-        {/* Honeypot — hidden from real users; bots fill it and get dropped. */}
-        <div aria-hidden className="absolute left-[-9999px] top-[-9999px]" style={{ position: "absolute" }}>
-          <label>
-            Website
-            <input type="text" name="website" tabIndex={-1} autoComplete="off" />
-          </label>
-        </div>
-
-        {company && (
-          <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-            Requesting for <strong>{company.name}</strong>
+      <Panel className="mx-auto mt-8 max-w-lg p-8">
+        <form action={submitInquiryAction} className="space-y-5">
+          {company && <input type="hidden" name="companyId" value={company.id} />}
+          <div aria-hidden className="absolute left-[-9999px]" style={{ position: "absolute" }}>
+            <label>
+              Website
+              <input type="text" name="website" tabIndex={-1} autoComplete="off" />
+            </label>
           </div>
-        )}
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <Field label="Your name" htmlFor="contactName">
-            <input id="contactName" name="contactName" required className={inputClass} />
-          </Field>
-          <Field label="Email" htmlFor="email">
-            <input id="email" name="email" type="email" required className={inputClass} />
-          </Field>
-        </div>
+          {company && (
+            <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+              Requesting for <strong>{company.name}</strong>
+            </div>
+          )}
 
-        <Field label="Phone (optional)" htmlFor="phone">
-          <input id="phone" name="phone" type="tel" className={inputClass} />
-        </Field>
-
-        <fieldset>
-          <legend className="text-sm font-medium text-slate-700">
-            I&apos;m interested in
-          </legend>
-          <div className="mt-2 space-y-2">
-            <Check
-              name="interestedIn"
-              value="featured"
-              label="Featured listing — pinned to the top of your city's rankings"
-              defaultChecked={feature === "featured"}
-            />
-            <Check
-              name="interestedIn"
-              value="badge"
-              label="Verified badge — a trust mark on your profile and listings"
-              defaultChecked={feature === "badge"}
-            />
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <Field label="Your name" htmlFor="contactName" required>
+              <input id="contactName" name="contactName" required className={inputCls} />
+            </Field>
+            <Field label="Email" htmlFor="email" required>
+              <input id="email" name="email" type="email" required className={inputCls} />
+            </Field>
           </div>
-        </fieldset>
+          <Field label="Phone" htmlFor="phone">
+            <input id="phone" name="phone" type="tel" className={inputCls} />
+          </Field>
 
-        <Field label="Anything else? (optional)" htmlFor="message">
-          <textarea id="message" name="message" rows={3} className={inputClass} />
-        </Field>
+          <fieldset>
+            <legend className="mb-2 text-sm font-medium text-slate-700">
+              I&apos;m interested in
+            </legend>
+            <div className="space-y-2">
+              <Check name="interestedIn" value="featured" label="Featured listing — pinned to the top of your city's rankings" defaultChecked={feature === "featured"} />
+              <Check name="interestedIn" value="badge" label="Verified badge — a trust mark on your profile and listings" defaultChecked={feature === "badge"} />
+            </div>
+          </fieldset>
 
-        <button
-          type="submit"
-          className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-        >
-          Request a call
-        </button>
-        <p className="text-center text-xs text-slate-400">
-          No payment now. We&apos;ll arrange everything on the call.
-        </p>
-      </form>
-    </Container>
-  );
-}
+          <Field label="Anything else?" htmlFor="message">
+            <textarea id="message" name="message" rows={3} className={textareaCls} />
+          </Field>
 
-const inputClass =
-  "mt-1.5 w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
-
-function Field({
-  label,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label htmlFor={htmlFor} className="block">
-      <span className="block text-sm font-medium text-slate-700">{label}</span>
-      {children}
-    </label>
+          <button type="submit" className={btn("primary", "w-full")}>
+            Request a call
+          </button>
+          <p className="text-center text-xs text-slate-400">
+            No payment now. We&apos;ll arrange everything on the call.
+          </p>
+        </form>
+      </Panel>
+    </PageShell>
   );
 }
 
@@ -162,7 +124,7 @@ function Check({
   defaultChecked?: boolean;
 }) {
   return (
-    <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 p-3 text-sm text-slate-700 transition hover:border-blue-300">
+    <label className="flex items-start gap-2.5 rounded-xl border border-slate-200 p-3 text-sm text-slate-700 transition hover:border-blue-300 has-[:checked]:border-blue-400 has-[:checked]:bg-blue-50">
       <input
         type="checkbox"
         name={name}
