@@ -463,6 +463,20 @@ export const companyDailyViews = pgTable(
   (t) => [primaryKey({ columns: [t.companyId, t.day] })],
 );
 
+/** Outbound "Visit website" clicks per company per day — the referral-traffic
+ * proof point companies care about (they see us as a utm_source). */
+export const companyDailyClicks = pgTable(
+  "company_daily_clicks",
+  {
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    day: text("day").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.companyId, t.day] })],
+);
+
 /* ---------------------------------------------------------------------------
  * Reviews — first-party, moderated client reviews (the Clutch trust moat).
  * Submitted publicly, held as "pending" until an admin publishes them.

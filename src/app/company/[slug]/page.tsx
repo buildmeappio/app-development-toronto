@@ -135,9 +135,10 @@ export default async function CompanyPage({
             </div>
             {company.website && (
               <a
-                href={company.website}
+                href={`/go/${company.slug}`}
                 target="_blank"
                 rel="noopener noreferrer nofollow"
+                title={company.domain ?? undefined}
                 className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700"
               >
                 Visit website ↗

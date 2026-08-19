@@ -57,6 +57,13 @@
       "when": 1787130748264,
       "tag": "0007_legal_silver_surfer",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787137426478,
+      "tag": "0008_fair_bloodscream",
+      "breakpoints": true
     }
   ]
 }

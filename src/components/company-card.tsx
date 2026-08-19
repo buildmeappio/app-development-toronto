@@ -79,9 +79,10 @@ export function CompanyCard({
       <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
         {company.website && (
           <a
-            href={company.website}
+            href={`/go/${company.slug}`}
             target="_blank"
             rel="noopener noreferrer nofollow"
+            title={company.domain ?? undefined}
             className="rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
           >
             Visit website

@@ -6,6 +6,7 @@ import {
   caseStudies,
   teamMembers,
   companyDailyViews,
+  companyDailyClicks,
 } from "@/db/schema";
 import { alias } from "drizzle-orm/pg-core";
 import { eq, and, asc, desc, sql, inArray, ilike } from "drizzle-orm";
@@ -35,6 +36,26 @@ export async function getViewStatsForCompanies(ids: string[]) {
     .from(companyDailyViews)
     .where(inArray(companyDailyViews.companyId, ids))
     .groupBy(companyDailyViews.companyId);
+  for (const r of rows) map.set(r.companyId, { total: r.total, last30: r.last30 });
+  return map;
+}
+
+/** Outbound website-click stats (total + last 30 days) for a set of companies. */
+export async function getClickStatsForCompanies(ids: string[]) {
+  const map = new Map<string, { total: number; last30: number }>();
+  if (ids.length === 0) return map;
+  const cutoff = new Date(Date.now() - 30 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const rows = await db
+    .select({
+      companyId: companyDailyClicks.companyId,
+      total: sql<number>`coalesce(sum(${companyDailyClicks.count}),0)::int`,
+      last30: sql<number>`coalesce(sum(${companyDailyClicks.count}) filter (where ${companyDailyClicks.day} >= ${cutoff}),0)::int`,
+    })
+    .from(companyDailyClicks)
+    .where(inArray(companyDailyClicks.companyId, ids))
+    .groupBy(companyDailyClicks.companyId);
   for (const r of rows) map.set(r.companyId, { total: r.total, last30: r.last30 });
   return map;
 }
