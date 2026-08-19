@@ -179,6 +179,46 @@ export async function searchLocations(q: string, limit = 8) {
     .limit(limit);
 }
 
+/** A company's best (lowest-number) all-time rank and where. For award badges. */
+export async function getCompanyBestRank(companyId: string) {
+  const [row] = await db
+    .select({
+      rank: rankingSnapshots.rank,
+      locationName: locations.name,
+      locationFullSlug: locations.fullSlug,
+    })
+    .from(rankingSnapshots)
+    .innerJoin(locations, eq(rankingSnapshots.locationId, locations.id))
+    .where(
+      and(
+        eq(rankingSnapshots.companyId, companyId),
+        eq(rankingSnapshots.period, "all-time"),
+      ),
+    )
+    .orderBy(asc(rankingSnapshots.rank))
+    .limit(1);
+  return row ?? null;
+}
+
+/** A company's rank in a specific location (all-time). */
+export async function getCompanyRankInLocation(
+  companyId: string,
+  locationId: string,
+) {
+  const [row] = await db
+    .select({ rank: rankingSnapshots.rank })
+    .from(rankingSnapshots)
+    .where(
+      and(
+        eq(rankingSnapshots.companyId, companyId),
+        eq(rankingSnapshots.locationId, locationId),
+        eq(rankingSnapshots.period, "all-time"),
+      ),
+    )
+    .limit(1);
+  return row?.rank ?? null;
+}
+
 /** Case-study counts keyed by company id (for completeness + dashboard). */
 export async function getCaseStudyCounts(ids: string[]) {
   if (ids.length === 0) return new Map<string, number>();

@@ -52,7 +52,7 @@ export async function SiteFooter() {
         </FooterColumn>
 
         <FooterColumn title="Company">
-          <FooterLink href="/#how">How it works</FooterLink>
+          <FooterLink href="/awards">Awards</FooterLink>
           <FooterLink href="/pricing">Pricing</FooterLink>
           <FooterLink href="/privacy">Privacy</FooterLink>
           <FooterLink href="/terms">Terms</FooterLink>

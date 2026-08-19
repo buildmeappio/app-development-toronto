@@ -38,6 +38,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
+  const year = now.getFullYear();
+  const awardUrls: MetadataRoute.Sitemap = [
+    { url: `${SITE_URL}/awards`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    ...locations.map((l) => ({
+      url: `${SITE_URL}/awards/${year}/${l.fullSlug}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
+  ];
+
   const companyUrls: MetadataRoute.Sitemap = companies.map((c) => ({
     url: `${SITE_URL}/company/${c.slug}`,
     lastModified: c.updatedAt,
@@ -45,5 +56,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  return [...home, ...locationUrls, ...companyUrls];
+  return [...home, ...locationUrls, ...awardUrls, ...companyUrls];
 }

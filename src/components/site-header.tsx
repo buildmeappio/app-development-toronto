@@ -14,8 +14,8 @@ export function SiteHeader() {
           <Link href="/#regions" className="transition hover:text-slate-900">
             Regions
           </Link>
-          <Link href="/#how" className="transition hover:text-slate-900">
-            How it works
+          <Link href="/awards" className="transition hover:text-slate-900">
+            Awards
           </Link>
           <Link href="/pricing" className="transition hover:text-slate-900">
             Pricing
