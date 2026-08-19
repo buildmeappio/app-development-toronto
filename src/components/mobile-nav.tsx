@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 
 const LINKS = [
   { href: "/app-development-companies/gta", label: "Browse GTA" },
@@ -15,12 +14,18 @@ export function MobileNav() {
   const [email, setEmail] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
-      setEmail(session?.user?.email ?? null),
-    );
-    return () => sub.subscription.unsubscribe();
+    let unsub: (() => void) | undefined;
+    (async () => {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      setEmail(data.user?.email ?? null);
+      const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
+        setEmail(session?.user?.email ?? null),
+      );
+      unsub = () => sub.subscription.unsubscribe();
+    })();
+    return () => unsub?.();
   }, []);
 
   // Lock scroll while the sheet is open.

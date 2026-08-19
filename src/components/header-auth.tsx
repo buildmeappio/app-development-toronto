@@ -2,25 +2,29 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 
 /**
  * Client island for auth state in the header. Kept client-side on purpose:
  * reading auth cookies in a server component would force every page (including
- * the static SEO pages) into dynamic rendering.
+ * the static SEO pages) into dynamic rendering. The Supabase client is imported
+ * lazily so its ~100 KiB isn't in every page's initial bundle.
  */
 export function HeaderAuth() {
   const [email, setEmail] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth
-      .getUser()
-      .then(({ data }) => setEmail(data.user?.email ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
-      setEmail(session?.user?.email ?? null),
-    );
-    return () => sub.subscription.unsubscribe();
+    let unsub: (() => void) | undefined;
+    (async () => {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      setEmail(data.user?.email ?? null);
+      const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
+        setEmail(session?.user?.email ?? null),
+      );
+      unsub = () => sub.subscription.unsubscribe();
+    })();
+    return () => unsub?.();
   }, []);
 
   // Loading — reserve space to avoid layout shift.
