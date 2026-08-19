@@ -6,9 +6,10 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { CompanyLogo } from "@/components/company-logo";
 import { StarRating } from "@/components/star-rating";
 import { Badge } from "@/components/badge";
-import { getCompanyBySlug, getCaseStudies } from "@/lib/queries/locations";
+import { getCompanyBySlug, getCaseStudies, getTeamMembers } from "@/lib/queries/locations";
 import { getActiveBadgeCompanyIds } from "@/lib/queries/placements";
 import { getPublishedReviews, getReviewAggregate } from "@/lib/queries/reviews";
+import { TrackView } from "@/components/track-view";
 import { JsonLd } from "@/components/json-ld";
 import { breadcrumbJsonLd, companyJsonLd } from "@/lib/jsonld";
 
@@ -46,12 +47,14 @@ export default async function CompanyPage({
 
   const { company, hqLocationName, hqFullSlug } = row;
   const claimed = company.claimStatus === "claimed";
-  const [badgeIds, studies, companyReviews, reviewAgg] = await Promise.all([
+  const [badgeIds, studies, companyReviews, reviewAgg, team] = await Promise.all([
     getActiveBadgeCompanyIds().catch(() => new Set<string>()),
     getCaseStudies(company.id).catch(() => []),
     getPublishedReviews(company.id).catch(() => []),
     getReviewAggregate(company.id).catch(() => ({ count: 0, avg: 0 })),
+    getTeamMembers(company.id).catch(() => []),
   ]);
+  const techStack = company.techStack ?? [];
   const verified = badgeIds.has(company.id);
   const focusAreas = company.focusAreas ?? [];
   const socials = [
@@ -71,6 +74,7 @@ export default async function CompanyPage({
 
   return (
     <main className="pb-8">
+      <TrackView companyId={company.id} />
       <JsonLd
         data={[
           breadcrumbJsonLd([
@@ -164,6 +168,23 @@ export default async function CompanyPage({
                   ))}
                 </div>
               )}
+              {techStack.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Tech stack
+                  </h3>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {techStack.map((t) => (
+                      <span
+                        key={t}
+                        className="rounded-md bg-slate-100 px-2.5 py-1 font-mono text-xs text-slate-600"
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </section>
 
             {studies.length > 0 && (
@@ -175,24 +196,51 @@ export default async function CompanyPage({
                   {studies.map((cs) => (
                     <div
                       key={cs.id}
-                      className="rounded-2xl border border-slate-200 p-5"
+                      className="overflow-hidden rounded-2xl border border-slate-200"
                     >
-                      <h3 className="font-semibold text-slate-900">{cs.title}</h3>
-                      {cs.description && (
-                        <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-                          {cs.description}
-                        </p>
+                      {cs.imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={cs.imageUrl}
+                          alt={cs.title}
+                          className="aspect-[16/9] w-full object-cover"
+                        />
                       )}
-                      {cs.url && (
-                        <a
-                          href={cs.url}
-                          target="_blank"
-                          rel="noopener noreferrer nofollow"
-                          className="mt-2 inline-block text-sm font-medium text-blue-600 hover:underline"
-                        >
-                          View project →
-                        </a>
-                      )}
+                      <div className="p-5">
+                        <h3 className="font-semibold text-slate-900">{cs.title}</h3>
+                        {cs.description && (
+                          <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+                            {cs.description}
+                          </p>
+                        )}
+                        {cs.url && (
+                          <a
+                            href={cs.url}
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                            className="mt-2 inline-block text-sm font-medium text-blue-600 hover:underline"
+                          >
+                            View project →
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {team.length > 0 && (
+              <section>
+                <h2 className="text-lg font-semibold text-slate-900">Team</h2>
+                <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                  {team.map((m) => (
+                    <div key={m.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+                      <CompanyLogo name={m.name} logoUrl={m.photoUrl} size={44} />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">{m.name}</p>
+                        {m.role && <p className="truncate text-xs text-slate-500">{m.role}</p>}
+                      </div>
                     </div>
                   ))}
                 </div>

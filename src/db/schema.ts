@@ -125,6 +125,7 @@ export const companies = pgTable(
 
     // Rep-editable profile enrichment (all free to fill in).
     focusAreas: text("focus_areas").array(), // e.g. ["iOS apps","Web apps"]
+    techStack: text("tech_stack").array(), // e.g. ["Swift","Flutter","Node.js"]
     linkedinUrl: text("linkedin_url"),
     twitterUrl: text("twitter_url"),
     facebookUrl: text("facebook_url"),
@@ -415,6 +416,52 @@ export const caseStudiesRelations = relations(caseStudies, ({ one }) => ({
 
 // The free case-study cap; Verified unlocks unlimited.
 export const FREE_CASE_STUDY_LIMIT = 3;
+
+/* ---------------------------------------------------------------------------
+ * Team members — a company's people (name, role, photo), shown on the profile.
+ * ------------------------------------------------------------------------- */
+
+export const teamMembers = pgTable(
+  "team_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    role: text("role"),
+    photoUrl: text("photo_url"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("team_members_company_idx").on(t.companyId)],
+);
+
+export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
+  company: one(companies, {
+    fields: [teamMembers.companyId],
+    references: [companies.id],
+  }),
+}));
+
+export const FREE_TEAM_LIMIT = 12;
+
+/* ---------------------------------------------------------------------------
+ * Profile view counts (per company per day) — powers owner analytics.
+ * ------------------------------------------------------------------------- */
+
+export const companyDailyViews = pgTable(
+  "company_daily_views",
+  {
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    day: text("day").notNull(), // "YYYY-MM-DD"
+    count: integer("count").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.companyId, t.day] })],
+);
 
 /* ---------------------------------------------------------------------------
  * Reviews — first-party, moderated client reviews (the Clutch trust moat).

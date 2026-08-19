@@ -4,9 +4,40 @@ import {
   rankingSnapshots,
   companies,
   caseStudies,
+  teamMembers,
+  companyDailyViews,
 } from "@/db/schema";
 import { alias } from "drizzle-orm/pg-core";
 import { eq, and, asc, desc, sql, inArray, ilike } from "drizzle-orm";
+
+/** Team members for a company. */
+export async function getTeamMembers(companyId: string) {
+  return db
+    .select()
+    .from(teamMembers)
+    .where(eq(teamMembers.companyId, companyId))
+    .orderBy(asc(teamMembers.createdAt));
+}
+
+/** Profile-view stats (total + last 30 days) for a set of companies. */
+export async function getViewStatsForCompanies(ids: string[]) {
+  const map = new Map<string, { total: number; last30: number }>();
+  if (ids.length === 0) return map;
+  const cutoff = new Date(Date.now() - 30 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const rows = await db
+    .select({
+      companyId: companyDailyViews.companyId,
+      total: sql<number>`coalesce(sum(${companyDailyViews.count}),0)::int`,
+      last30: sql<number>`coalesce(sum(${companyDailyViews.count}) filter (where ${companyDailyViews.day} >= ${cutoff}),0)::int`,
+    })
+    .from(companyDailyViews)
+    .where(inArray(companyDailyViews.companyId, ids))
+    .groupBy(companyDailyViews.companyId);
+  for (const r of rows) map.set(r.companyId, { total: r.total, last30: r.last30 });
+  return map;
+}
 
 // Escape LIKE wildcards in user input (drizzle parameterizes, but % and _ are
 // still treated as wildcards otherwise).

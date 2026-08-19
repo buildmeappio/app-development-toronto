@@ -7,7 +7,7 @@ import { getCurrentUser, getUserClaims } from "@/lib/auth";
 import {
   getActivePlacementsForCompanyIds,
 } from "@/lib/queries/placements";
-import { getCaseStudyCounts } from "@/lib/queries/locations";
+import { getCaseStudyCounts, getViewStatsForCompanies } from "@/lib/queries/locations";
 import { getAllReviewAggregates } from "@/lib/queries/reviews";
 import { computeCompleteness } from "@/lib/completeness";
 
@@ -27,11 +27,18 @@ export default async function DashboardPage({
   const inReview = allClaims.filter((c) => c.status === "pending");
   const ids = approved.map((c) => c.company.id);
 
-  const [placementRows, csCounts, reviewAgg] = await Promise.all([
+  const [placementRows, csCounts, reviewAgg, viewStats] = await Promise.all([
     getActivePlacementsForCompanyIds(ids).catch(() => []),
     getCaseStudyCounts(ids).catch(() => new Map<string, number>()),
     getAllReviewAggregates().catch(() => new Map()),
+    getViewStatsForCompanies(ids).catch(
+      () => new Map<string, { total: number; last30: number }>(),
+    ),
   ]);
+  const totalViews30 = ids.reduce(
+    (n, id) => n + (viewStats.get(id)?.last30 ?? 0),
+    0,
+  );
 
   const featuresByCompany = new Map<string, typeof placementRows>();
   for (const p of placementRows) {
@@ -75,10 +82,10 @@ export default async function DashboardPage({
 
       {(approved.length > 0 || inReview.length > 0) && (
         <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatCard label="Claimed" value={approved.length} />
+          <StatCard label="Profile views" value={totalViews30} hint="last 30 days" />
           <StatCard label="Reviews" value={totalReviews} hint="published" />
           <StatCard label="Active features" value={activeFeatures} />
-          <StatCard label="Pending" value={inReview.length} />
+          <StatCard label="Claimed" value={approved.length} />
         </div>
       )}
 
@@ -133,6 +140,10 @@ export default async function DashboardPage({
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-medium text-slate-500">
                           Profile {comp.percent}% complete
+                          <span className="text-slate-400">
+                            {" · "}
+                            {viewStats.get(c.company.id)?.last30 ?? 0} views (30d)
+                          </span>
                         </span>
                         {comp.percent < 100 && (
                           <Link

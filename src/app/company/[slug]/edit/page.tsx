@@ -10,15 +10,18 @@ import {
   textareaCls,
   btn,
 } from "@/components/ui";
-import { getCompanyBySlug, getCaseStudies } from "@/lib/queries/locations";
+import { getCompanyBySlug, getCaseStudies, getTeamMembers } from "@/lib/queries/locations";
 import { isCompanyVerified } from "@/lib/queries/placements";
 import { getCurrentUser, hasApprovedClaim } from "@/lib/auth";
-import { FOCUS_AREAS, FREE_CASE_STUDY_LIMIT } from "@/db/schema";
+import { FOCUS_AREAS, FREE_CASE_STUDY_LIMIT, FREE_TEAM_LIMIT } from "@/db/schema";
 import { computeCompleteness } from "@/lib/completeness";
+import { CompanyLogo } from "@/components/company-logo";
 import {
   updateProfileAction,
   addCaseStudyAction,
   deleteCaseStudyAction,
+  addTeamMemberAction,
+  deleteTeamMemberAction,
 } from "@/app/actions/claims";
 
 export const metadata = { title: "Edit profile", robots: { index: false } };
@@ -56,10 +59,12 @@ export default async function EditCompanyPage({
     );
   }
 
-  const [studies, verified] = await Promise.all([
+  const [studies, verified, team] = await Promise.all([
     getCaseStudies(company.id),
     isCompanyVerified(company.id),
+    getTeamMembers(company.id),
   ]);
+  const atTeamLimit = team.length >= FREE_TEAM_LIMIT;
   const atLimit = studies.length >= FREE_CASE_STUDY_LIMIT && !verified;
   const selectedFocus = new Set(company.focusAreas ?? []);
   const socials = [company.linkedinUrl, company.twitterUrl, company.facebookUrl, company.instagramUrl].filter(Boolean).length;
@@ -154,6 +159,14 @@ export default async function EditCompanyPage({
                 ))}
               </div>
             </div>
+            <Field label="Tech stack" hint="Comma-separated — e.g. Swift, Kotlin, Flutter, React Native, Node.js">
+              <input
+                name="techStack"
+                defaultValue={(company.techStack ?? []).join(", ")}
+                placeholder="Swift, Kotlin, Flutter, Node.js"
+                className={inputCls}
+              />
+            </Field>
           </div>
         </Section>
 
@@ -266,6 +279,51 @@ export default async function EditCompanyPage({
               <button type="submit" className={btn("dark")}>
                 Add case study
               </button>
+            </form>
+          )}
+        </Section>
+      </div>
+
+      {/* Team */}
+      <div id="team" className="mt-6 scroll-mt-24">
+        <Section
+          title="Team"
+          desc="Put faces to your company — buyers trust teams they can see."
+          aside={<span className="text-sm text-slate-400">{team.length} / {FREE_TEAM_LIMIT}</span>}
+        >
+          {team.length > 0 && (
+            <ul className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {team.map((m) => (
+                <li key={m.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+                  <CompanyLogo name={m.name} logoUrl={m.photoUrl} size={40} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900">{m.name}</p>
+                    {m.role && <p className="truncate text-xs text-slate-500">{m.role}</p>}
+                  </div>
+                  <form action={deleteTeamMemberAction}>
+                    <input type="hidden" name="memberId" value={m.id} />
+                    <button type="submit" className="text-xs font-medium text-slate-400 transition hover:text-rose-600">
+                      Remove
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {atTeamLimit ? (
+            <p className="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-500">
+              You&apos;ve added the maximum of {FREE_TEAM_LIMIT} team members.
+            </p>
+          ) : (
+            <form action={addTeamMemberAction} className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-5 sm:grid-cols-3">
+              <input type="hidden" name="companyId" value={company.id} />
+              <input name="name" required placeholder="Name *" className={inputCls} />
+              <input name="role" placeholder="Role (e.g. CTO)" className={inputCls} />
+              <input name="photoUrl" type="url" placeholder="Photo URL" className={inputCls} />
+              <div className="sm:col-span-3">
+                <button type="submit" className={btn("dark")}>Add team member</button>
+              </div>
             </form>
           )}
         </Section>
